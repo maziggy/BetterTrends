@@ -24,7 +24,7 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # Show the form with the schema
         return self.async_show_form(step_id="user", data_schema=data_schema)
-
+    
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
