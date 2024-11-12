@@ -29,7 +29,17 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     errors={"sensor": "invalid_sensor"},
                     description_placeholders={"sensor_help": "Enter a valid sensor entity ID, e.g., sensor.temperature"}
                 )
+            
+            # Check for duplicate sensor
+            if sensor_id in self.sensors:
+                return self.async_show_form(
+                    step_id="user",
+                    data_schema=self._sensor_schema(),
+                    errors={"sensor": "duplicate_sensor"},
+                    description_placeholders={"sensor_help": "This sensor has already been added."}
+                )
 
+            # Add the sensor if it's valid and not a duplicate
             self.sensors.append(sensor_id)
             return await self.async_step_add_more()
 
@@ -52,6 +62,15 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         data_schema=self._sensor_schema(optional=True),
                         errors={"sensor": "invalid_sensor"},
                         description_placeholders={"sensor_help": "Enter an additional sensor ID or leave blank to finish."}
+                    )
+
+                # Check for duplicate sensor
+                if sensor_id in self.sensors:
+                    return self.async_show_form(
+                        step_id="add_more",
+                        data_schema=self._sensor_schema(optional=True),
+                        errors={"sensor": "duplicate_sensor"},
+                        description_placeholders={"sensor_help": "This sensor has already been added."}
                     )
 
                 # Add the new sensor to the list
@@ -104,13 +123,18 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
             sensors = []
             errors = {}
 
-            # Validate each entered sensor
+            # Validate each entered sensor and check for duplicates
+            seen_sensors = set()
             for key, sensor_id in user_input.items():
-                if sensor_id.strip():  # Check if user provided a sensor
-                    if self._is_valid_sensor(sensor_id):
-                        sensors.append(sensor_id.strip())
+                sensor_id = sensor_id.strip()
+                if sensor_id:
+                    if sensor_id in seen_sensors:
+                        errors[key] = "duplicate_sensor"  # Duplicate in the form
+                    elif not self._is_valid_sensor(sensor_id):
+                        errors[key] = "invalid_sensor"  # Invalid sensor ID
                     else:
-                        errors[key] = "invalid_sensor"  # Mark this specific sensor as invalid
+                        sensors.append(sensor_id)
+                        seen_sensors.add(sensor_id)
 
             # If there are validation errors, show the form again with error messages
             if errors:
