@@ -101,7 +101,7 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
             _LOGGER.debug(f"Updating options with sensors: {sensors}")
             self.hass.config_entries.async_update_entry(self.config_entry, options={"sensors": sensors})
 
-            # Reload the config entry to apply changes immediately
+            # Force reload of the config entry to apply changes immediately
             await self.hass.config_entries.async_reload(self.config_entry.entry_id)
 
             # Use an empty dictionary for `data` to avoid TypeError
