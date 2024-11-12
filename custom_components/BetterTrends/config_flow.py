@@ -19,8 +19,9 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             sensor_id = user_input["sensor_0"].strip()
 
-            # Check if the sensor is valid
+            # Validate the sensor
             if not await self._validate_sensor(sensor_id):
+                _LOGGER.debug("Invalid sensor ID: %s", sensor_id)
                 return self.async_show_form(
                     step_id="user",
                     data_schema=self._build_initial_schema(),
@@ -30,6 +31,7 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # Save the sensor if valid
             if sensor_id not in self.sensors:
                 self.sensors.append(sensor_id)
+                _LOGGER.debug("Added initial sensor: %s", sensor_id)
 
             # Move to the next step to add more sensors or finish
             return await self.async_step_add_more()
@@ -40,11 +42,11 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_add_more(self, user_input=None):
         """Allow the user to add more sensors or finish setup."""
         if user_input is not None:
-            # Check if the user is adding a new sensor
             new_sensor = user_input.get("sensor_next", "").strip()
             if new_sensor:
-                # Validate the sensor
+                # Validate the new sensor
                 if not await self._validate_sensor(new_sensor):
+                    _LOGGER.debug("Invalid sensor ID: %s", new_sensor)
                     return self.async_show_form(
                         step_id="add_more",
                         data_schema=self._build_additional_schema(),
@@ -53,6 +55,7 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 # Check for duplicates
                 if new_sensor in self.sensors:
+                    _LOGGER.debug("Duplicate sensor ID: %s", new_sensor)
                     return self.async_show_form(
                         step_id="add_more",
                         data_schema=self._build_additional_schema(),
@@ -61,10 +64,12 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 # Add the valid new sensor
                 self.sensors.append(new_sensor)
+                _LOGGER.debug("Added new sensor: %s", new_sensor)
 
             # Finish setup if 'finish' is checked
             if user_input.get("finish", False):
-                # Save the sensors list in `data` for the config entry
+                _LOGGER.debug("Final sensor list: %s", self.sensors)
+                # Save the sensors list in the config entry data
                 return self.async_create_entry(title="Better Trends", data={"sensors": self.sensors})
 
         # Show the form to add another sensor or finish
@@ -90,11 +95,9 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def _validate_sensor(self, sensor_id):
         """Validates that a sensor exists and is valid."""
-        # Perform validation by checking if the sensor_id is registered in Home Assistant
         if not sensor_id.startswith("sensor."):
             return False
 
-        # Get the entity registry directly
         entity_registry = async_get(self.hass)
         return entity_registry.async_is_registered(sensor_id)
 
@@ -112,8 +115,11 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
             sensors = [sensor.strip() for sensor in user_input.values() if sensor]
             unique_sensors = list(dict.fromkeys(sensors))  # Remove duplicates
 
+            # Log the sensor list to confirm saving
+            _LOGGER.debug("Updating sensors in options: %s", unique_sensors)
+
             # Update the config entry with the unique list of sensors
-            self.hass.config_entries.async_update_entry(self.config_entry, options={"sensors": unique_sensors})
+            self.hass.config_entries.async_update_entry(self.config_entry, data={"sensors": unique_sensors})
 
             # Reload the entry to apply changes immediately
             await self.hass.config_entries.async_reload(self.config_entry.entry_id)
