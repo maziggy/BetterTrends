@@ -32,7 +32,7 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
-        return MyCustomIntegrationOptionsFlowHandler(config_entry)
+        return BetterTrendsOptionsFlowHandler(config_entry)
 
 
 class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):

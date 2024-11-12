@@ -8,5 +8,6 @@
   "documentation": "https://github.com/maziggy/BetterTrends",
   "issue_tracker": "https://github.com/maziggy/BetterTrends/issues",
   "codeowners": ["@maziggy"],
-  "version": "0.1"
+  "version": "0.1",
+  "config_flow": true
 }

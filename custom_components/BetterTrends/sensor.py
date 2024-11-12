@@ -8,7 +8,7 @@ from .const import DOMAIN
 async def async_setup_entry(hass, config_entry, async_add_entities):
     sensors = config_entry.options.get("sensors", config_entry.data.get("sensors")).split(",")
 
-    async_add_entities([MyCustomSensor(api_url, api_token, sensor.strip()) for sensor in sensors], True)
+    async_add_entities([BetterTrends(api_url, api_token, sensor.strip()) for sensor in sensors], True)
 
 class TrendSensor(SensorEntity):
     def __init__(self, hass, sensor_id):

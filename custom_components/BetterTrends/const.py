@@ -1,2 +1,2 @@
 DOMAIN = "better-trends"
-SUFFIX = "_trend"
+SENSOR_SUFFIX = "_BetterTrend"
