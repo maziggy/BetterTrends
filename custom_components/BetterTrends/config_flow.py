@@ -146,18 +146,19 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
                     errors=errors
                 )
 
-            # Update the list of sensors in the config entry if no errors
+            # Update the list of sensors in the config entry only if no errors
             _LOGGER.debug(f"Updating data with sensors: {sensors}")
             new_data = {**self.config_entry.data, "sensors": sensors}
             self.hass.config_entries.async_update_entry(self.config_entry, data=new_data)
 
-            # If the last field (new sensor) is blank, end the options flow
-            if not user_input.get(f"sensor_{len(sensors)}"):
-                # Reload config entry to apply changes immediately and complete the setup
+            # Check if the last input field was left blank to finish setup
+            last_field_key = f"sensor_{len(sensors)}"
+            if last_field_key in user_input and not user_input[last_field_key].strip():
+                # If the last field is blank, complete the setup
                 await self.hass.config_entries.async_reload(self.config_entry.entry_id)
                 return self.async_create_entry(title="", data={})
 
-            # If the last sensor field was filled, show the form again for additional entries
+            # If the last field was not blank, return to the form with an additional row
             return self.async_show_form(
                 step_id="init",
                 data_schema=self._build_options_schema(sensors, add_new_row=True)
