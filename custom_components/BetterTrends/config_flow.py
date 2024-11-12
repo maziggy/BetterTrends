@@ -16,12 +16,13 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None):
         """Handle the initial setup step to collect the first sensor."""
+        _LOGGER.debug("Step: user input for initial setup")
         if user_input is not None:
             sensor_id = user_input["sensor_0"].strip()
 
             # Validate the sensor
             if not await self._validate_sensor(sensor_id):
-                _LOGGER.debug("Invalid sensor ID: %s", sensor_id)
+                _LOGGER.debug("Invalid sensor ID during initial setup: %s", sensor_id)
                 return self.async_show_form(
                     step_id="user",
                     data_schema=self._build_initial_schema(),
@@ -31,7 +32,7 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # Save the sensor if valid
             if sensor_id not in self.sensors:
                 self.sensors.append(sensor_id)
-                _LOGGER.debug("Added initial sensor: %s", sensor_id)
+                _LOGGER.debug("Initial sensor added: %s", sensor_id)
 
             # Move to the next step to add more sensors or finish
             return await self.async_step_add_more()
@@ -41,6 +42,7 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_add_more(self, user_input=None):
         """Allow the user to add more sensors or finish setup."""
+        _LOGGER.debug("Step: add more sensors or finish")
         if user_input is not None:
             new_sensor = user_input.get("sensor_next", "").strip()
             if new_sensor:
@@ -64,13 +66,13 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 # Add the valid new sensor
                 self.sensors.append(new_sensor)
-                _LOGGER.debug("Added new sensor: %s", new_sensor)
+                _LOGGER.debug("New sensor added: %s", new_sensor)
 
             # Finish setup if 'finish' is checked
             if user_input.get("finish", False):
-                _LOGGER.debug("Final sensor list: %s", self.sensors)
-                # Save the sensors list in the config entry options
-                return self.async_create_entry(title="Better Trends", data={}, options={"sensors": self.sensors})
+                _LOGGER.debug("Final sensor list being saved: %s", self.sensors)
+                # Save the sensors list in the config entry data
+                return self.async_create_entry(title="Better Trends", data={"sensors": self.sensors})
 
         # Show the form to add another sensor or finish
         return self.async_show_form(step_id="add_more", data_schema=self._build_additional_schema())
@@ -110,13 +112,14 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         """Manage options to add, remove, or edit sensors after setup."""
+        _LOGGER.debug("Options step: initializing options flow")
         if user_input is not None:
             # Collect the sensors from the options form
             sensors = [sensor.strip() for sensor in user_input.values() if sensor]
             unique_sensors = list(dict.fromkeys(sensors))  # Remove duplicates
 
             # Log the sensor list to confirm saving
-            _LOGGER.debug("Updating sensors in options: %s", unique_sensors)
+            _LOGGER.debug("Updating sensors in options flow: %s", unique_sensors)
 
             # Update the config entry options with the unique list of sensors
             self.hass.config_entries.async_update_entry(self.config_entry, options={"sensors": unique_sensors})
