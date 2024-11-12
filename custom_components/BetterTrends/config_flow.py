@@ -1,9 +1,9 @@
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
-from .const import DOMAIN, SUFFIX
+from .const import DOMAIN
 
-class MyCustomIntegrationConfigFlow(config_entries.ConfigFlow, domain=DOMAIN, suffix=SUFFIX):
+class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
@@ -35,7 +35,7 @@ class MyCustomIntegrationConfigFlow(config_entries.ConfigFlow, domain=DOMAIN, su
         return MyCustomIntegrationOptionsFlowHandler(config_entry)
 
 
-class MyCustomIntegrationOptionsFlowHandler(config_entries.OptionsFlow):
+class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, config_entry):
         self.config_entry = config_entry
 
