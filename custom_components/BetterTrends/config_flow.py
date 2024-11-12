@@ -2,25 +2,17 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from .const import DOMAIN
-import logging
 
-_LOGGER = logging.getLogger(__name__)
+INTERVAL_DEFAULT = 5  # Default to 5 minutes, can be changed
 
 class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for BetterTrends."""
     VERSION = 1
 
-    async def async_step_user(self, user_input=None):
-        """Handle initial step to create entry with test option data."""
-        if user_input is not None:
-            _LOGGER.debug("Creating entry with test data")
-            # Create a config entry with a test option
-            return self.async_create_entry(title="Better Trends Test", data={}, options={"test_key": "test_value"})
+    def __init__(self):
+        self.sensors = []
 
-        return self.async_show_form(
-            step_id="user",
-            data_schema=vol.Schema({vol.Required("dummy_field", default="test"): str})
-        )
+    # Add your existing async_step_user, async_step_add_more, and other methods here
 
     @staticmethod
     @callback
@@ -29,22 +21,46 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
-    """Options flow to verify options are saved and accessible."""
+    """Options flow to modify sensors and update interval after setup."""
 
     def __init__(self, config_entry):
         self.config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
-        """Allow viewing and modifying the test option."""
+        """Manage options to add, remove, or edit sensors and interval."""
         if user_input is not None:
-            # Update test_key in options
-            self.hass.config_entries.async_update_entry(self.config_entry, options={"test_key": user_input["test_key"]})
-            _LOGGER.debug("Updated test_key in options: %s", user_input["test_key"])
+            # Validate the interval
+            interval = user_input.get("update_interval", INTERVAL_DEFAULT)
+            if not (1 <= interval <= 60):
+                return self.async_show_form(
+                    step_id="init",
+                    data_schema=self._build_options_schema(),
+                    errors={"update_interval": "invalid_interval"}
+                )
+
+            # Update the options with the validated interval and sensors
+            sensors = [sensor.strip() for sensor in user_input.values() if sensor.startswith("sensor_") and sensor]
+            new_options = {"sensors": sensors, "update_interval": interval}
+            self.hass.config_entries.async_update_entry(self.config_entry, options=new_options)
+
+            # Reload the entry to apply changes immediately
             await self.hass.config_entries.async_reload(self.config_entry.entry_id)
             return self.async_create_entry(title="", data={})
 
-        test_value = self.config_entry.options.get("test_key", "test_value")
+        # Show the form initially
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema({vol.Required("test_key", default=test_value): str})
+            data_schema=self._build_options_schema()
         )
+
+    def _build_options_schema(self):
+        """Build schema dynamically for sensors and interval option."""
+        sensors = self.config_entry.options.get("sensors", [])
+        interval = self.config_entry.options.get("update_interval", INTERVAL_DEFAULT)
+
+        # Create schema for each sensor and add an extra field for a new sensor
+        schema = {vol.Optional(f"sensor_{i}", default=sensor): str for i, sensor in enumerate(sensors)}
+        schema[vol.Optional(f"sensor_{len(sensors)}", default="")] = str  # Field to add a new sensor
+        schema[vol.Required("update_interval", default=interval)] = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
+
+        return vol.Schema(schema)
