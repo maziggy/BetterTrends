@@ -100,7 +100,7 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
             # Reload the config entry to apply changes immediately
             await self.hass.config_entries.async_reload(self.config_entry.entry_id)
 
-            # Return a completed entry, ensuring `data` is provided as an empty dictionary
+            # Use an empty dictionary for `data` to avoid TypeError
             return self.async_create_entry(title="", data={})
 
         # Prepopulate form with current sensors in options, fallback to config_entry.data
