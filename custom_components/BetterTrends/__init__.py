@@ -3,7 +3,7 @@ from homeassistant.core import HomeAssistant
 from .const import DOMAIN
 
 async def async_setup(hass: HomeAssistant, config: dict):
-    """Set up the Better Trends integration using YAML (not used in this case)."""
+    """Set up Better Trends integration."""
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
@@ -12,10 +12,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = entry.data
 
-    # Forward the setup to the sensor platform
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setup(entry, "sensor")
-    )
+    # Forward the setup to the sensor platform and await it
+    await hass.config_entries.async_forward_entry_setup(entry, "sensor")
 
     return True
 
