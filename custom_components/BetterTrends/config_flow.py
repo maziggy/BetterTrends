@@ -11,20 +11,38 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self.sensors = []
 
     async def async_step_user(self, user_input=None):
-        """Handle the initial setup step to collect the first sensor."""
+        """Handle the initial setup step to collect sensors."""
         if user_input is not None:
-            # Store the initial sensor in the configuration data
+            # Add the first sensor to the list
             self.sensors.append(user_input["sensor_0"])
-            return self.async_create_entry(title="Better Trends", data={"sensors": self.sensors})
+            # Move to the next step to add more sensors or finish setup
+            return await self.async_step_add_more()
 
-        # Define the schema for the initial setup form (requesting the first sensor)
+        # Show the initial form to add the first sensor
         data_schema = vol.Schema({
-            vol.Required("sensor_0", default=""): str  # Field to enter the first sensor
+            vol.Required("sensor_0", default=""): str
         })
-
-        # Show the form with the schema
         return self.async_show_form(step_id="user", data_schema=data_schema)
-    
+
+    async def async_step_add_more(self, user_input=None):
+        """Allow the user to add more sensors or finish setup."""
+        if user_input is not None:
+            # If the user entered a sensor, add it to the list
+            if user_input.get("sensor_next"):
+                self.sensors.append(user_input["sensor_next"])
+
+            # Check if the user chose to finish
+            if user_input.get("finish", False):
+                # Save the sensors in the config entry and complete setup
+                return self.async_create_entry(title="Better Trends", data={"sensors": self.sensors})
+
+        # Show the form to add another sensor or finish setup
+        data_schema = vol.Schema({
+            vol.Optional("sensor_next", default=""): str,  # Optional field to add the next sensor
+            vol.Optional("finish", default=False): bool  # Checkbox to finish adding sensors
+        })
+        return self.async_show_form(step_id="add_more", data_schema=data_schema)
+
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
@@ -40,7 +58,7 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         """Manage options to add, remove, or edit sensors after setup."""
         if user_input is not None:
-            # Collect the sensors from the options form
+            # Collect sensors from the options form
             sensors = [sensor.strip() for sensor in user_input.values() if sensor.startswith("sensor_") and sensor]
             new_options = {"sensors": sensors}
             self.hass.config_entries.async_update_entry(self.config_entry, options=new_options)
