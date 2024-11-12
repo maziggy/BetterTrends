@@ -146,16 +146,22 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
                     errors=errors
                 )
 
-            # Update `config_entry.data` with the new sensor list only if all are valid
+            # Update the list of sensors in the config entry if no errors
             _LOGGER.debug(f"Updating data with sensors: {sensors}")
             new_data = {**self.config_entry.data, "sensors": sensors}
             self.hass.config_entries.async_update_entry(self.config_entry, data=new_data)
 
-            # Force reload of the config entry to apply changes immediately
-            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+            # If the last field (new sensor) is blank, end the options flow
+            if not user_input.get(f"sensor_{len(sensors)}"):
+                # Reload config entry to apply changes immediately and complete the setup
+                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+                return self.async_create_entry(title="", data={})
 
-            # Use an empty dictionary for `data` to avoid TypeError
-            return self.async_create_entry(title="", data={})
+            # If the last sensor field was filled, show the form again for additional entries
+            return self.async_show_form(
+                step_id="init",
+                data_schema=self._build_options_schema(sensors, add_new_row=True)
+            )
 
         # Retrieve the current list of sensors from data
         current_sensors = self.config_entry.data.get("sensors", [])
@@ -163,7 +169,7 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
         # Log the retrieved current sensors list
         _LOGGER.debug(f"Current sensors for options form: {current_sensors}")
 
-        # Build the schema, allowing the new row since this is the first pass (no errors yet)
+        # Show form initially with a new row added
         data_schema = self._build_options_schema(current_sensors, add_new_row=True)
         
         return self.async_show_form(step_id="init", data_schema=data_schema)
