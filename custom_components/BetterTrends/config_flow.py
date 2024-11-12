@@ -93,9 +93,9 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if not sensor_id.startswith("sensor."):
             return False
 
-        entity_registry = await self.hass.helpers.entity_registry.async_get_registry()
+        entity_registry = await self.hass.helpers.entity_registry.async_get(self.hass)
         return entity_registry.async_is_registered(sensor_id)
-
+    
 
 class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
     """Options flow to modify sensors after setup."""
