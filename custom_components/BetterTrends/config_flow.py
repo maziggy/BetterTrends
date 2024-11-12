@@ -20,6 +20,8 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             sensor_id = user_input["sensor"]
+
+            # Validate sensor ID
             if not self._is_valid_sensor(sensor_id):
                 return self.async_show_form(
                     step_id="user",
@@ -27,6 +29,7 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     errors={"sensor": "invalid_sensor"},
                     description_placeholders={"sensor_help": "Enter a valid sensor entity ID, e.g., sensor.temperature"}
                 )
+
             self.sensors.append(sensor_id)
             return await self.async_step_add_more()
 
@@ -42,6 +45,7 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if "sensor" in user_input and user_input["sensor"]:
                 sensor_id = user_input["sensor"]
 
+                # Validate sensor ID
                 if not self._is_valid_sensor(sensor_id):
                     return self.async_show_form(
                         step_id="add_more",
@@ -72,7 +76,9 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def _is_valid_sensor(self, sensor_id):
         """Check if a sensor entity exists in Home Assistant."""
-        return self.hass.states.get(sensor_id) is not None
+        entity = self.hass.states.get(sensor_id)
+        # Ensure the entity exists and is of domain 'sensor'
+        return entity is not None and entity.domain == "sensor"
 
     def _entry_exists(self):
         """Check if an entry with the same domain already exists."""
@@ -95,7 +101,24 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
         """Manage options to add, remove, or edit sensors."""
         if user_input is not None:
             # Collect updated sensors from the options form
-            sensors = [sensor.strip() for sensor in user_input.values() if sensor.strip()]
+            sensors = []
+            errors = {}
+
+            # Validate each entered sensor
+            for key, sensor_id in user_input.items():
+                if sensor_id.strip():
+                    if self._is_valid_sensor(sensor_id):
+                        sensors.append(sensor_id.strip())
+                    else:
+                        errors[key] = "invalid_sensor"  # Mark this specific sensor as invalid
+
+            # If there are validation errors, show the form again with error messages
+            if errors:
+                return self.async_show_form(
+                    step_id="init",
+                    data_schema=self._build_options_schema(user_input.values()),
+                    errors=errors
+                )
 
             # Update `config_entry.data` with the new sensor list
             _LOGGER.debug(f"Updating data with sensors: {sensors}")
@@ -126,3 +149,9 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
             schema[vol.Optional(f"sensor_{i}", default=sensor)] = str
         schema[vol.Optional(f"sensor_{len(sensors)}", default="")] = str  # Field for adding a new sensor
         return vol.Schema(schema)
+
+    def _is_valid_sensor(self, sensor_id):
+        """Check if a sensor entity exists in Home Assistant."""
+        entity = self.hass.states.get(sensor_id)
+        # Ensure the entity exists and is of domain 'sensor'
+        return entity is not None and entity.domain == "sensor"
