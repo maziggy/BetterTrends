@@ -30,7 +30,7 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     description_placeholders={"sensor_help": "Enter a valid sensor entity ID, e.g., sensor.temperature"}
                 )
             
-            # Check for duplicate sensor
+            # Check for duplicate sensor in initial setup
             if sensor_id in self.sensors:
                 return self.async_show_form(
                     step_id="user",
@@ -64,7 +64,7 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         description_placeholders={"sensor_help": "Enter an additional sensor ID or leave blank to finish."}
                     )
 
-                # Check for duplicate sensor
+                # Check for duplicate sensor in setup addition
                 if sensor_id in self.sensors:
                     return self.async_show_form(
                         step_id="add_more",
@@ -129,9 +129,9 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
                 sensor_id = sensor_id.strip()
                 if sensor_id:
                     if sensor_id in seen_sensors:
-                        errors[key] = "duplicate_sensor"  # Duplicate in the form
+                        errors[key] = "duplicate_sensor"  # Flag duplicate sensor entry
                     elif not self._is_valid_sensor(sensor_id):
-                        errors[key] = "invalid_sensor"  # Invalid sensor ID
+                        errors[key] = "invalid_sensor"  # Flag invalid sensor
                     else:
                         sensors.append(sensor_id)
                         seen_sensors.add(sensor_id)
