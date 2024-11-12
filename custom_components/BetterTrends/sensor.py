@@ -1,40 +1,39 @@
-from homeassistant.components.sensor import SensorEntity
-from .const import DOMAIN, SENSOR_SUFFIX
+class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
+    """Options flow for modifying the list of sensors after setup."""
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
-    """Set up Better Trends sensors based on the configuration entry."""
-    sensor_ids = config_entry.data["sensors"]
-    new_entities = []
+    def __init__(self, config_entry):
+        self.config_entry = config_entry
+        self.sensors = config_entry.data.get("sensors", [])
 
-    for sensor_id in sensor_ids:
-        # Create a unique identifier for the new sensor without explicitly setting `sensor.`
-        new_sensor_suffix = f"{sensor_id.split('.')[1]}{SENSOR_SUFFIX}"
-        new_entities.append(BetterTrendsSensor(sensor_id, new_sensor_suffix))
+    async def async_step_init(self, user_input=None):
+        """Manage options to add, remove, or edit sensors."""
+        # If user_input is provided, update the sensors list
+        if user_input is not None:
+            # Collect sensors from individual fields into a list
+            self.sensors = [sensor.strip() for key, sensor in user_input.items() if sensor.strip()]
+            return self.async_create_entry(title="", data={"sensors": self.sensors})
 
-    async_add_entities(new_entities, True)
+        # If no user_input, show form for editing sensors
+        schema = self._options_schema()
+        return self.async_show_form(
+            step_id="init",
+            data_schema=schema,
+            description_placeholders={"sensor_help": "Enter a unique sensor ID per field."}
+        )
 
+    def _options_schema(self):
+        """Dynamically generate schema based on current sensors list."""
+        schema = {}
 
-class BetterTrendsSensor(SensorEntity):
-    """A sensor to track trends based on another sensor's state."""
+        # Add a field for each sensor
+        for i, sensor in enumerate(self.sensors):
+            schema[vol.Optional(f"sensor_{i}", default=sensor)] = str
 
-    def __init__(self, original_sensor_id, unique_suffix):
-        self._original_sensor_id = original_sensor_id
-        self._attr_unique_id = f"{unique_suffix}"  # Use only the unique suffix
-        self._attr_name = f"{original_sensor_id} Trend"
-        self._state = None
+        # Add an empty field to allow the user to add a new sensor
+        schema[vol.Optional(f"sensor_{len(self.sensors)}", default="")] = str
 
-    @property
-    def unique_id(self):
-        """Return a unique ID for this entity."""
-        return self._attr_unique_id
+        return vol.Schema(schema)
 
-    @property
-    def state(self):
-        return self._state
-
-    async def async_update(self):
-        """Fetch the latest data from the original sensor and calculate a trend."""
-        original_state = self.hass.states.get(self._original_sensor_id)
-        if original_state:
-            # Example logic: copy the state directly (you could replace with trend calculation logic)
-            self._state = original_state.state
+    def _is_valid_sensor(self, sensor_id):
+        """Check if a sensor entity exists."""
+        return self.hass.states.get(sensor_id) is not None
