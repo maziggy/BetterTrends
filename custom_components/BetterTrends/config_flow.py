@@ -7,13 +7,17 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     def __init__(self):
-        self.sensors = []  # Store sensors during the initial flow
+        self.sensors = []
 
     async def async_step_user(self, user_input=None):
-        """Initial setup step to gather the first sensor."""
+        """Initial setup step to gather the first sensor or redirect to options if already configured."""
+        # Check if there's already an entry for this integration
+        if self._entry_exists():
+            return self.async_abort(reason="already_configured")
+
+        # If this is a fresh setup and no existing entry, proceed with the setup
         if user_input is not None:
             sensor_id = user_input["sensor"]
-
             if not self._is_valid_sensor(sensor_id):
                 return self.async_show_form(
                     step_id="user",
@@ -22,6 +26,7 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     description_placeholders={"sensor_help": "Enter a valid sensor entity ID, e.g., sensor.temperature"}
                 )
 
+            # Add the first sensor to the list and proceed to add more
             self.sensors.append(sensor_id)
             return await self.async_step_add_more()
 
@@ -45,10 +50,14 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         description_placeholders={"sensor_help": "Enter an additional sensor ID or leave blank to finish."}
                     )
 
+                # Add the new sensor to the list
                 self.sensors.append(sensor_id)
+
             else:
+                # Finalize setup and save all sensors in the config entry
                 return self.async_create_entry(title="Better Trends", data={"sensors": self.sensors})
 
+        # Show form for adding additional sensors
         return self.async_show_form(
             step_id="add_more",
             data_schema=self._sensor_schema(optional=True),
@@ -56,12 +65,19 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     def _sensor_schema(self, optional=False):
+        """Return the schema for a single sensor input field."""
         return vol.Schema({
             vol.Optional("sensor") if optional else vol.Required("sensor"): str
         })
 
     def _is_valid_sensor(self, sensor_id):
+        """Check if a sensor entity exists in Home Assistant."""
         return self.hass.states.get(sensor_id) is not None
+
+    def _entry_exists(self):
+        """Check if an entry with the same domain already exists."""
+        existing_entries = self._async_current_entries()
+        return any(entry.domain == DOMAIN for entry in existing_entries)
 
     @staticmethod
     @callback
@@ -70,7 +86,7 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
-    """Options flow to allow modifying the sensor list after setup."""
+    """Options flow to modify sensors after setup."""
 
     def __init__(self, config_entry):
         self.config_entry = config_entry
