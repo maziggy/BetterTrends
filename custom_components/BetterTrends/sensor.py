@@ -11,8 +11,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         new_sensor_suffix = f"{sensor_id.split('.')[1]}{SENSOR_SUFFIX}"
         new_entities.append(BetterTrendsSensor(sensor_id, new_sensor_suffix))
 
-    # Add entities to Home Assistant
     async_add_entities(new_entities, True)
+
 
 class BetterTrendsSensor(SensorEntity):
     """A sensor to track trends based on another sensor's state."""
