@@ -142,7 +142,7 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
                 # Redisplay the form with the existing inputs without adding a new row
                 return self.async_show_form(
                     step_id="init",
-                    data_schema=self._build_options_schema(user_input.values()),
+                    data_schema=self._build_options_schema(user_input.values(), add_new_row=False),
                     errors=errors
                 )
 
@@ -163,17 +163,19 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
         # Log the retrieved current sensors list
         _LOGGER.debug(f"Current sensors for options form: {current_sensors}")
 
-        # Update the schema with the current sensors list so that it always shows the latest state
-        data_schema = self._build_options_schema(current_sensors)
+        # Build the schema, allowing the new row since this is the first pass (no errors yet)
+        data_schema = self._build_options_schema(current_sensors, add_new_row=True)
         
         return self.async_show_form(step_id="init", data_schema=data_schema)
 
-    def _build_options_schema(self, sensors):
+    def _build_options_schema(self, sensors, add_new_row=True):
         """Dynamically build schema based on current sensors."""
         schema = {}
         for i, sensor in enumerate(sensors):
             schema[vol.Optional(f"sensor_{i}", default=sensor)] = str
-        schema[vol.Optional(f"sensor_{len(sensors)}", default="")] = str  # Field for adding a new sensor
+        # Only add a new row if add_new_row is True
+        if add_new_row:
+            schema[vol.Optional(f"sensor_{len(sensors)}", default="")] = str  # Field for adding a new sensor
         return vol.Schema(schema)
 
     def _is_valid_sensor(self, sensor_id):
