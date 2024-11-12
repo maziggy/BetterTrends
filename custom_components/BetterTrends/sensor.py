@@ -3,7 +3,8 @@ from .const import DOMAIN, SENSOR_SUFFIX
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up Better Trends sensors based on the configuration entry."""
-    sensor_ids = config_entry.data.get("sensors", [])
+    # Use sensors from options if available, fallback to data
+    sensor_ids = config_entry.options.get("sensors", config_entry.data.get("sensors", []))
     new_entities = []
 
     for sensor_id in sensor_ids:

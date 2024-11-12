@@ -1,6 +1,6 @@
-import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
+import voluptuous as vol
 from .const import DOMAIN
 
 class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -15,7 +15,6 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if self._entry_exists():
             return self.async_abort(reason="already_configured")
 
-        # If this is a fresh setup and no existing entry, proceed with the setup
         if user_input is not None:
             sensor_id = user_input["sensor"]
             if not self._is_valid_sensor(sensor_id):
@@ -25,8 +24,6 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     errors={"sensor": "invalid_sensor"},
                     description_placeholders={"sensor_help": "Enter a valid sensor entity ID, e.g., sensor.temperature"}
                 )
-
-            # Add the first sensor to the list and proceed to add more
             self.sensors.append(sensor_id)
             return await self.async_step_add_more()
 
@@ -94,13 +91,16 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         """Manage options to add, remove, or edit sensors."""
         if user_input is not None:
-            # Update the sensors list in the config entry with new sensors
+            # Collect updated sensors from the options form
             sensors = [sensor.strip() for sensor in user_input.values() if sensor.strip()]
-            self.hass.config_entries.async_update_entry(self.config_entry, data={"sensors": sensors})
-            return self.async_create_entry(title="", data={"sensors": sensors})
 
-        # Prepopulate form with current sensors in options
-        data_schema = self._build_options_schema(self.config_entry.data.get("sensors", []))
+            # Save the updated list of sensors to `config_entry.options`
+            self.hass.config_entries.async_update_entry(self.config_entry, options={"sensors": sensors})
+            return self.async_create_entry(title="")
+
+        # Prepopulate form with current sensors in options, fallback to config_entry.data
+        current_sensors = self.config_entry.options.get("sensors", self.config_entry.data.get("sensors", []))
+        data_schema = self._build_options_schema(current_sensors)
         return self.async_show_form(step_id="init", data_schema=data_schema)
 
     def _build_options_schema(self, sensors):
@@ -108,6 +108,5 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
         schema = {}
         for i, sensor in enumerate(sensors):
             schema[vol.Optional(f"sensor_{i}", default=sensor)] = str
-        # Add an empty field for a new sensor
-        schema[vol.Optional(f"sensor_{len(sensors)}", default="")] = str
+        schema[vol.Optional(f"sensor_{len(sensors)}", default="")] = str  # Field for adding a new sensor
         return vol.Schema(schema)
