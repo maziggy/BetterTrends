@@ -3,8 +3,6 @@ from homeassistant import config_entries
 from homeassistant.core import callback
 from .const import DOMAIN
 
-INTERVAL_DEFAULT = 5  # Default to 5 minutes, can be changed
-
 class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for BetterTrends."""
     VERSION = 1
@@ -13,9 +11,9 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self.sensors = []
 
     async def async_step_user(self, user_input=None):
-        """Handle the initial step."""
+        """Handle the initial setup step."""
         if user_input is not None:
-            # Create the config entry with the user inputs
+            # Create the config entry with user-provided data
             return self.async_create_entry(title="Better Trends", data=user_input)
 
         # Show a form if user_input is None
@@ -28,34 +26,35 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
-    """Options flow to modify sensors and update interval after setup."""
+    """Options flow to modify sensors after setup."""
 
     def __init__(self, config_entry):
         self.config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
-        """Manage options to add, remove, or edit sensors and interval."""
+        """Manage options to add, remove, or edit sensors after setup."""
         if user_input is not None:
-            interval = user_input.get("update_interval", INTERVAL_DEFAULT)
-
+            # Update the sensors based on user input
             sensors = [sensor.strip() for sensor in user_input.values() if sensor.startswith("sensor_") and sensor]
-            new_options = {"sensors": sensors, "update_interval": interval}
+            new_options = {"sensors": sensors}
             self.hass.config_entries.async_update_entry(self.config_entry, options=new_options)
 
+            # Reload the entry to apply changes immediately
             await self.hass.config_entries.async_reload(self.config_entry.entry_id)
             return self.async_create_entry(title="", data={})
 
+        # Show the form initially for editing sensors
         return self.async_show_form(
             step_id="init",
             data_schema=self._build_options_schema()
         )
 
     def _build_options_schema(self):
+        """Build schema dynamically for editing sensors."""
         sensors = self.config_entry.options.get("sensors", [])
-        interval = self.config_entry.options.get("update_interval", INTERVAL_DEFAULT)
-
+        
+        # Create schema for each sensor and add an extra field for adding a new sensor
         schema = {vol.Optional(f"sensor_{i}", default=sensor): str for i, sensor in enumerate(sensors)}
-        schema[vol.Optional(f"sensor_{len(sensors)}", default="")] = str
-        schema[vol.Required("update_interval", default=interval)] = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
+        schema[vol.Optional(f"sensor_{len(sensors)}", default="")] = str  # Field to add a new sensor
 
         return vol.Schema(schema)
