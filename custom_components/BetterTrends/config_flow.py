@@ -1,6 +1,6 @@
+import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
-import voluptuous as vol
 from .const import DOMAIN
 
 class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -100,7 +100,8 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
             # Reload the config entry to apply changes immediately
             await self.hass.config_entries.async_reload(self.config_entry.entry_id)
 
-            return self.async_create_entry(title="")
+            # Return a completed entry, ensuring `data` is provided as an empty dictionary
+            return self.async_create_entry(title="", data={})
 
         # Prepopulate form with current sensors in options, fallback to config_entry.data
         current_sensors = self.config_entry.options.get("sensors", self.config_entry.data.get("sensors", []))
