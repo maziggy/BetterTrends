@@ -7,14 +7,23 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for BetterTrends."""
     VERSION = 1
 
-    async def async_step_user(self, user_input=None):
-        """Handle the initial setup step."""
-        if user_input is not None:
-            # Create the config entry with the user input (even if it’s empty here)
-            return self.async_create_entry(title="Better Trends", data=user_input)
+    def __init__(self):
+        self.sensors = []
 
-        # Show an empty form to start setup
-        return self.async_show_form(step_id="user", data_schema=vol.Schema({}))
+    async def async_step_user(self, user_input=None):
+        """Handle the initial setup step to collect the first sensor."""
+        if user_input is not None:
+            # Store the initial sensor in the configuration data
+            self.sensors.append(user_input["sensor_0"])
+            return self.async_create_entry(title="Better Trends", data={"sensors": self.sensors})
+
+        # Define the schema for the initial setup form (requesting the first sensor)
+        data_schema = vol.Schema({
+            vol.Required("sensor_0", default=""): str  # Field to enter the first sensor
+        })
+
+        # Show the form with the schema
+        return self.async_show_form(step_id="user", data_schema=data_schema)
 
     @staticmethod
     @callback
