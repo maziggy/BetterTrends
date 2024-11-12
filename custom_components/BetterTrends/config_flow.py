@@ -1,7 +1,7 @@
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
-from homeassistant.helpers.entity_registry import async_get  # Direct import
+from homeassistant.helpers.entity_registry import async_get  # Direct import of async_get
 from .const import DOMAIN
 import logging
 
@@ -93,7 +93,8 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if not sensor_id.startswith("sensor."):
             return False
 
-        entity_registry = async_get(self.hass)  # Use direct import of async_get
+        # Get the entity registry directly
+        entity_registry = async_get(self.hass)
         return entity_registry.async_is_registered(sensor_id)
 
 
