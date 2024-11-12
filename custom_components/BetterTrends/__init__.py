@@ -10,6 +10,11 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
+async def async_setup(hass: HomeAssistant, config: dict):
+    """Set up BetterTrends integration."""
+    # This function might be empty, but it's required for Home Assistant to recognize the integration
+    return True
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up BetterTrends from a config entry."""
 
