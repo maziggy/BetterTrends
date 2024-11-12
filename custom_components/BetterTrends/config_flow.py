@@ -69,8 +69,8 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # Finish setup if 'finish' is checked
             if user_input.get("finish", False):
                 _LOGGER.debug("Final sensor list: %s", self.sensors)
-                # Save the sensors list in the config entry data
-                return self.async_create_entry(title="Better Trends", data={"sensors": self.sensors})
+                # Save the sensors list in the config entry options
+                return self.async_create_entry(title="Better Trends", data={}, options={"sensors": self.sensors})
 
         # Show the form to add another sensor or finish
         return self.async_show_form(step_id="add_more", data_schema=self._build_additional_schema())
@@ -118,8 +118,8 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
             # Log the sensor list to confirm saving
             _LOGGER.debug("Updating sensors in options: %s", unique_sensors)
 
-            # Update the config entry with the unique list of sensors
-            self.hass.config_entries.async_update_entry(self.config_entry, data={"sensors": unique_sensors})
+            # Update the config entry options with the unique list of sensors
+            self.hass.config_entries.async_update_entry(self.config_entry, options={"sensors": unique_sensors})
 
             # Reload the entry to apply changes immediately
             await self.hass.config_entries.async_reload(self.config_entry.entry_id)
@@ -133,7 +133,7 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
 
     def _build_options_schema(self):
         """Build schema dynamically for editing sensors."""
-        sensors = self.config_entry.data.get("sensors", [])
+        sensors = self.config_entry.options.get("sensors", [])
 
         # Create schema for each sensor and add an extra field for adding a new sensor
         schema = {vol.Optional(f"sensor_{i}", default=sensor): str for i, sensor in enumerate(sensors)}
