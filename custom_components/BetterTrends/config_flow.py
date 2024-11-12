@@ -1,7 +1,7 @@
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
-from homeassistant.helpers.entity_registry import async_entries_for_config_entry
+from homeassistant.helpers.entity_registry import async_get  # Direct import
 from .const import DOMAIN
 import logging
 
@@ -93,9 +93,9 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if not sensor_id.startswith("sensor."):
             return False
 
-        entity_registry = await self.hass.helpers.entity_registry.async_get(self.hass)
+        entity_registry = async_get(self.hass)  # Use direct import of async_get
         return entity_registry.async_is_registered(sensor_id)
-    
+
 
 class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
     """Options flow to modify sensors after setup."""
