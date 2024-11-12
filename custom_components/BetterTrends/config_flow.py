@@ -139,13 +139,14 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
             # If there are validation errors, show the form again with error messages
             if errors:
                 _LOGGER.debug(f"Validation errors in options flow: {errors}")
+                # Redisplay the form with the existing inputs without adding a new row
                 return self.async_show_form(
                     step_id="init",
                     data_schema=self._build_options_schema(user_input.values()),
                     errors=errors
                 )
 
-            # Update `config_entry.data` with the new sensor list
+            # Update `config_entry.data` with the new sensor list only if all are valid
             _LOGGER.debug(f"Updating data with sensors: {sensors}")
             new_data = {**self.config_entry.data, "sensors": sensors}
             self.hass.config_entries.async_update_entry(self.config_entry, data=new_data)
