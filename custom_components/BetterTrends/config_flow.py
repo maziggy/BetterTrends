@@ -94,8 +94,12 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
             # Collect updated sensors from the options form
             sensors = [sensor.strip() for sensor in user_input.values() if sensor.strip()]
 
-            # Save the updated list of sensors to `config_entry.options`
+            # Update `config_entry.options` with the new sensor list
             self.hass.config_entries.async_update_entry(self.config_entry, options={"sensors": sensors})
+
+            # Reload the config entry to apply changes immediately
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+
             return self.async_create_entry(title="")
 
         # Prepopulate form with current sensors in options, fallback to config_entry.data
