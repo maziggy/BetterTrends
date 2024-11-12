@@ -1,108 +1,18 @@
-import logging
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from .const import DOMAIN
 
-_LOGGER = logging.getLogger(__name__)
+INTERVAL_DEFAULT = 5  # Default to 5 minutes, can be changed
 
 class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Config flow for BetterTrends."""
     VERSION = 1
 
     def __init__(self):
         self.sensors = []
 
-    async def async_step_user(self, user_input=None):
-        """Initial setup step to gather the first sensor or redirect to options if already configured."""
-        # Check if there's already an entry for this integration
-        if self._entry_exists():
-            return self.async_abort(reason="already_configured")
-
-        if user_input is not None:
-            sensor_id = user_input["sensor"]
-
-            # Validate sensor ID
-            if not self._is_valid_sensor(sensor_id):
-                return self.async_show_form(
-                    step_id="user",
-                    data_schema=self._sensor_schema(),
-                    errors={"sensor": "invalid_sensor"},
-                    description_placeholders={"sensor_help": "Enter a valid sensor entity ID, e.g., sensor.temperature"}
-                )
-            
-            # Check for duplicate sensor in initial setup
-            if sensor_id in self.sensors:
-                return self.async_show_form(
-                    step_id="user",
-                    data_schema=self._sensor_schema(),
-                    errors={"sensor": "duplicate_sensor"},
-                    description_placeholders={"sensor_help": "This sensor has already been added."}
-                )
-
-            # Add the sensor if it's valid and not a duplicate
-            self.sensors.append(sensor_id)
-            return await self.async_step_add_more()
-
-        return self.async_show_form(
-            step_id="user",
-            data_schema=self._sensor_schema(),
-            description_placeholders={"sensor_help": "Enter a valid sensor entity ID, e.g., sensor.temperature"}
-        )
-
-    async def async_step_add_more(self, user_input=None):
-        """Step to add more sensors or finish setup."""
-        if user_input is not None:
-            if "sensor" in user_input and user_input["sensor"]:
-                sensor_id = user_input["sensor"]
-
-                # Validate sensor ID
-                if not self._is_valid_sensor(sensor_id):
-                    return self.async_show_form(
-                        step_id="add_more",
-                        data_schema=self._sensor_schema(optional=True),
-                        errors={"sensor": "invalid_sensor"},
-                        description_placeholders={"sensor_help": "Enter an additional sensor ID or leave blank to finish."}
-                    )
-
-                # Check for duplicate sensor in setup addition
-                if sensor_id in self.sensors:
-                    return self.async_show_form(
-                        step_id="add_more",
-                        data_schema=self._sensor_schema(optional=True),
-                        errors={"sensor": "duplicate_sensor"},
-                        description_placeholders={"sensor_help": "This sensor has already been added."}
-                    )
-
-                # Add the new sensor to the list
-                self.sensors.append(sensor_id)
-            else:
-                # Finalize setup and save all sensors in the config entry
-                _LOGGER.debug(f"Creating config entry with sensors: {self.sensors}")
-                return self.async_create_entry(title="Better Trends", data={"sensors": self.sensors})
-
-        # Show form for adding additional sensors
-        return self.async_show_form(
-            step_id="add_more",
-            data_schema=self._sensor_schema(optional=True),
-            description_placeholders={"sensor_help": "Enter an additional sensor ID or leave blank to finish."}
-        )
-
-    def _sensor_schema(self, optional=False):
-        """Return the schema for a single sensor input field."""
-        return vol.Schema({
-            vol.Optional("sensor") if optional else vol.Required("sensor"): str
-        })
-
-    def _is_valid_sensor(self, sensor_id):
-        """Check if a sensor entity exists in Home Assistant."""
-        entity = self.hass.states.get(sensor_id)
-        # Ensure the entity exists and is of domain 'sensor'
-        return entity is not None and entity.domain == "sensor"
-
-    def _entry_exists(self):
-        """Check if an entry with the same domain already exists."""
-        existing_entries = self._async_current_entries()
-        return any(entry.domain == DOMAIN for entry in existing_entries)
+    # Add your existing async_step_user, async_step_add_more, and other methods here
 
     @staticmethod
     @callback
@@ -111,91 +21,46 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
-    """Options flow to modify sensors after setup."""
+    """Options flow to modify sensors and update interval after setup."""
 
     def __init__(self, config_entry):
         self.config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
-        """Manage options to add, remove, or edit sensors."""
-        _LOGGER.debug("Entering async_step_init with user_input: %s", user_input)
-        
+        """Manage options to add, remove, or edit sensors and interval."""
         if user_input is not None:
-            # Collect updated sensors from the options form and validate each
-            sensors = []
-            errors = {}
-
-            # Validate each entered sensor and check for duplicates
-            seen_sensors = set()
-            for key, sensor_id in user_input.items():
-                sensor_id = sensor_id.strip()
-                if sensor_id:
-                    if sensor_id in seen_sensors:
-                        errors[key] = "duplicate_sensor"  # Flag duplicate sensor entry
-                    elif not self._is_valid_sensor(sensor_id):
-                        errors[key] = "invalid_sensor"  # Flag invalid sensor
-                    else:
-                        sensors.append(sensor_id)
-                        seen_sensors.add(sensor_id)
-
-            # Log validation results
-            _LOGGER.debug("Validation complete. Sensors: %s, Errors: %s", sensors, errors)
-
-            # If there are validation errors, show the form again with error messages
-            if errors:
-                _LOGGER.debug("Displaying form again due to errors: %s", errors)
+            # Validate the interval
+            interval = user_input.get("update_interval", INTERVAL_DEFAULT)
+            if not (1 <= interval <= 60):
                 return self.async_show_form(
                     step_id="init",
-                    data_schema=self._build_options_schema(user_input.values(), add_new_row=False),
-                    errors=errors
+                    data_schema=self._build_options_schema(),
+                    errors={"update_interval": "invalid_interval"}
                 )
 
-            # Update the list of sensors in the config entry only if no errors
-            _LOGGER.debug("Updating config entry data with sensors: %s", sensors)
-            new_data = {**self.config_entry.data, "sensors": sensors}
-            self.hass.config_entries.async_update_entry(self.config_entry, data=new_data)
+            # Update the options with the validated interval and sensors
+            sensors = [sensor.strip() for sensor in user_input.values() if sensor.startswith("sensor_") and sensor]
+            new_options = {"sensors": sensors, "update_interval": interval}
+            self.hass.config_entries.async_update_entry(self.config_entry, options=new_options)
 
-            # Determine if the setup should finish based on the last field
-            last_field_key = f"sensor_{len(sensors)}"
-            if last_field_key in user_input and not user_input[last_field_key].strip():
-                # If the last field is blank, complete the setup
-                _LOGGER.debug("Last field is blank, finishing setup.")
-                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
-                return self.async_create_entry(title="", data={})
+            # Reload the entry to apply changes immediately
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+            return self.async_create_entry(title="", data={})
 
-            # If the last field was not blank, show the form again for additional entries
-            _LOGGER.debug("Last field is not blank, showing form again to allow more sensors.")
-            return self.async_show_form(
-                step_id="init",
-                data_schema=self._build_options_schema(sensors, add_new_row=True)
-            )
+        # Show the form initially
+        return self.async_show_form(
+            step_id="init",
+            data_schema=self._build_options_schema()
+        )
 
-        # Retrieve the current list of sensors from data
-        current_sensors = self.config_entry.data.get("sensors", [])
-        
-        # Log the retrieved current sensors list
-        _LOGGER.debug("Displaying initial form with current sensors: %s", current_sensors)
+    def _build_options_schema(self):
+        """Build schema dynamically for sensors and interval option."""
+        sensors = self.config_entry.options.get("sensors", [])
+        interval = self.config_entry.options.get("update_interval", INTERVAL_DEFAULT)
 
-        # Show form initially with a new row added
-        data_schema = self._build_options_schema(current_sensors, add_new_row=True)
-        
-        return self.async_show_form(step_id="init", data_schema=data_schema)
+        # Create schema for each sensor and add an extra field for a new sensor
+        schema = {vol.Optional(f"sensor_{i}", default=sensor): str for i, sensor in enumerate(sensors)}
+        schema[vol.Optional(f"sensor_{len(sensors)}", default="")] = str  # Field to add a new sensor
+        schema[vol.Required("update_interval", default=interval)] = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
 
-    def _build_options_schema(self, sensors, add_new_row=True):
-        """Dynamically build schema based on current sensors."""
-        schema = {}
-        for i, sensor in enumerate(sensors):
-            schema[vol.Optional(f"sensor_{i}", default=sensor)] = str
-        # Only add a new row if add_new_row is True
-        if add_new_row:
-            schema[vol.Optional(f"sensor_{len(sensors)}", default="")] = str  # Field for adding a new sensor
-        _LOGGER.debug("Building options schema with add_new_row=%s: %s", add_new_row, schema)
         return vol.Schema(schema)
-
-    def _is_valid_sensor(self, sensor_id):
-        """Check if a sensor entity exists in Home Assistant."""
-        entity = self.hass.states.get(sensor_id)
-        # Ensure the entity exists and is of domain 'sensor'
-        valid = entity is not None and entity.domain == "sensor"
-        _LOGGER.debug("Validating sensor '%s': %s", sensor_id, valid)
-        return valid
