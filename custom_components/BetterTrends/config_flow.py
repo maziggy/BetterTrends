@@ -103,9 +103,12 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
             # Use an empty dictionary for `data` to avoid TypeError
             return self.async_create_entry(title="", data={})
 
-        # Prepopulate form with current sensors in options, fallback to config_entry.data
+        # Prepopulate form with current sensors from options or fallback to config_entry.data
         current_sensors = self.config_entry.options.get("sensors", self.config_entry.data.get("sensors", []))
+        
+        # Update the schema with the current sensors list so that it always shows the latest state
         data_schema = self._build_options_schema(current_sensors)
+        
         return self.async_show_form(step_id="init", data_schema=data_schema)
 
     def _build_options_schema(self, sensors):
