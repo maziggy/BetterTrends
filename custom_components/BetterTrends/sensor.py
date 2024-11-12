@@ -7,9 +7,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     new_entities = []
 
     for sensor_id in sensor_ids:
-        # Use only the ID suffix after `sensor.`
-        new_sensor_id = f"{sensor_id.split('.')[1]}{SENSOR_SUFFIX}"
-        new_entities.append(BetterTrendsSensor(sensor_id, new_sensor_id))
+        # Create a unique identifier for the new sensor without explicitly setting `sensor.`
+        new_sensor_suffix = f"{sensor_id.split('.')[1]}{SENSOR_SUFFIX}"
+        new_entities.append(BetterTrendsSensor(sensor_id, new_sensor_suffix))
 
     async_add_entities(new_entities, True)
 
@@ -17,11 +17,16 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class BetterTrendsSensor(SensorEntity):
     """A sensor to track trends based on another sensor's state."""
 
-    def __init__(self, original_sensor_id, new_sensor_id_suffix):
+    def __init__(self, original_sensor_id, unique_suffix):
         self._original_sensor_id = original_sensor_id
-        self.entity_id = f"sensor.{new_sensor_id_suffix}"  # Use only the suffix, without `sensor.`
+        self._attr_unique_id = f"{unique_suffix}"  # Use only the unique suffix
         self._attr_name = f"{original_sensor_id} Trend"
         self._state = None
+
+    @property
+    def unique_id(self):
+        """Return a unique ID for this entity."""
+        return self._attr_unique_id
 
     @property
     def state(self):
