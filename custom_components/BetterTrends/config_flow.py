@@ -1,7 +1,10 @@
+import logging
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from .const import DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
 
 class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
@@ -49,9 +52,9 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 # Add the new sensor to the list
                 self.sensors.append(sensor_id)
-
             else:
                 # Finalize setup and save all sensors in the config entry
+                _LOGGER.debug(f"Creating config entry with sensors: {self.sensors}")
                 return self.async_create_entry(title="Better Trends", data={"sensors": self.sensors})
 
         # Show form for adding additional sensors
@@ -95,6 +98,7 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
             sensors = [sensor.strip() for sensor in user_input.values() if sensor.strip()]
 
             # Update `config_entry.options` with the new sensor list
+            _LOGGER.debug(f"Updating options with sensors: {sensors}")
             self.hass.config_entries.async_update_entry(self.config_entry, options={"sensors": sensors})
 
             # Reload the config entry to apply changes immediately
@@ -103,9 +107,12 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
             # Use an empty dictionary for `data` to avoid TypeError
             return self.async_create_entry(title="", data={})
 
-        # Prepopulate form with current sensors from options or fallback to config_entry.data
+        # Retrieve the current list of sensors from options or fallback to config_entry.data
         current_sensors = self.config_entry.options.get("sensors", self.config_entry.data.get("sensors", []))
         
+        # Log the retrieved current sensors list
+        _LOGGER.debug(f"Current sensors for options form: {current_sensors}")
+
         # Update the schema with the current sensors list so that it always shows the latest state
         data_schema = self._build_options_schema(current_sensors)
         
