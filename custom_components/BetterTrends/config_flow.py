@@ -97,9 +97,10 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
             # Collect updated sensors from the options form
             sensors = [sensor.strip() for sensor in user_input.values() if sensor.strip()]
 
-            # Update `config_entry.options` with the new sensor list
-            _LOGGER.debug(f"Updating options with sensors: {sensors}")
-            self.hass.config_entries.async_update_entry(self.config_entry, options={"sensors": sensors})
+            # Update `config_entry.data` with the new sensor list
+            _LOGGER.debug(f"Updating data with sensors: {sensors}")
+            new_data = {**self.config_entry.data, "sensors": sensors}
+            self.hass.config_entries.async_update_entry(self.config_entry, data=new_data)
 
             # Force reload of the config entry to apply changes immediately
             await self.hass.config_entries.async_reload(self.config_entry.entry_id)
@@ -107,8 +108,8 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
             # Use an empty dictionary for `data` to avoid TypeError
             return self.async_create_entry(title="", data={})
 
-        # Retrieve the current list of sensors from options or fallback to config_entry.data
-        current_sensors = self.config_entry.options.get("sensors", self.config_entry.data.get("sensors", []))
+        # Retrieve the current list of sensors from data
+        current_sensors = self.config_entry.data.get("sensors", [])
         
         # Log the retrieved current sensors list
         _LOGGER.debug(f"Current sensors for options form: {current_sensors}")
