@@ -1,7 +1,7 @@
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
-from homeassistant.helpers.entity_registry import async_get  # Direct import of async_get
+from homeassistant.helpers.entity_registry import async_get
 from .const import DOMAIN
 import logging
 
@@ -64,6 +64,7 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             # Finish setup if 'finish' is checked
             if user_input.get("finish", False):
+                # Save the sensors list in `data` for the config entry
                 return self.async_create_entry(title="Better Trends", data={"sensors": self.sensors})
 
         # Show the form to add another sensor or finish
@@ -126,7 +127,7 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
 
     def _build_options_schema(self):
         """Build schema dynamically for editing sensors."""
-        sensors = self.config_entry.options.get("sensors", [])
+        sensors = self.config_entry.data.get("sensors", [])
 
         # Create schema for each sensor and add an extra field for adding a new sensor
         schema = {vol.Optional(f"sensor_{i}", default=sensor): str for i, sensor in enumerate(sensors)}
