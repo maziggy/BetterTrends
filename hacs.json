@@ -1,0 +1,12 @@
+{
+  "name": "Better Trends",
+  "description": "Calculating sensor trends and displaying them in a nice way",
+  "domains": ["sensor"],
+  "iot_class": "local_polling",
+  "render_readme": true,
+  "country": "DE",
+  "documentation": "https://github.com/maziggy/BetterTrends",
+  "issue_tracker": "https://github.com/maziggy/BetterTrends/issues",
+  "codeowners": ["@maziggy"],
+  "version": "0.1"
+}

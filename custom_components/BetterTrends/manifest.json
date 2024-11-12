@@ -1,0 +1,11 @@
+{
+  "domain": "better-trends",
+  "name": "Better Trends",
+  "version": "0.1",
+  "documentation": "https://github.com/maziggy/BetterTrends",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": ["@maziggy"],
+  "config_flow": true,
+  "iot_class": "local_polling"
+}
