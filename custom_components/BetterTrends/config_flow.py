@@ -100,13 +100,13 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         """Manage options to add, remove, or edit sensors."""
         if user_input is not None:
-            # Collect updated sensors from the options form
+            # Collect updated sensors from the options form and validate each
             sensors = []
             errors = {}
 
             # Validate each entered sensor
             for key, sensor_id in user_input.items():
-                if sensor_id.strip():
+                if sensor_id.strip():  # Check if user provided a sensor
                     if self._is_valid_sensor(sensor_id):
                         sensors.append(sensor_id.strip())
                     else:
@@ -114,6 +114,7 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
 
             # If there are validation errors, show the form again with error messages
             if errors:
+                _LOGGER.debug(f"Validation errors in options flow: {errors}")
                 return self.async_show_form(
                     step_id="init",
                     data_schema=self._build_options_schema(user_input.values()),
