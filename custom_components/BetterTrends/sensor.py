@@ -35,5 +35,5 @@ class BetterTrendsSensor(Entity):
 
     async def async_update(self):
         """Update the sensor state."""
-        # Placeholder for actual update logic; for now, increment the state
-        self._state += 1  # Simulating an update by incrementing the state each time
+        # Simple placeholder to confirm async_update runs without "not_implemented" errors
+        self._state = self._state + 1 if isinstance(self._state, int) else 0
