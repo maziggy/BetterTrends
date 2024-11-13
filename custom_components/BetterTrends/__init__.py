@@ -4,6 +4,7 @@ from datetime import timedelta
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.entity import Entity
 
 from .calculation import calculate_trends  # Assuming you have a calculation function in calculation.py
 from .const import DOMAIN
@@ -12,21 +13,20 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up BetterTrends integration."""
-    # This function might be empty, but it's required for Home Assistant to recognize the integration
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up BetterTrends from a config entry."""
 
-    # Define default values for the sensors
-    interval_seconds = 300  # Set interval to 300 seconds (5 minutes)
-    steps = 10  # Default for better_trends_steps
+    # Get settings from ConfigEntry options or set defaults
+    interval_seconds = entry.options.get("update_interval", 300)
+    steps = entry.options.get("steps", 10)
     steps_curr = 0  # Initial value for the current step
 
-    # Initialize the sensors with their default values
-    hass.states.async_set("sensor.better_trends_interval", interval_seconds, {"unit_of_measurement": "seconds"})
-    hass.states.async_set("sensor.better_trends_steps", steps, {"unit_of_measurement": "number"})
-    hass.states.async_set("sensor.better_trends_steps_curr", steps_curr, {"unit_of_measurement": "number"})
+    # Register sensors in Home Assistant’s state machine using async_add_entities
+    hass.async_create_task(
+        hass.config_entries.async_forward_entry_setup(entry, "sensor")
+    )
 
     # Background task to update the trend sensors at the specified interval
     interval = timedelta(seconds=interval_seconds)

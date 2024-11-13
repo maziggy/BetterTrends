@@ -1,41 +1,39 @@
-from homeassistant.components.sensor import SensorEntity
-from .const import DOMAIN, SENSOR_SUFFIX
+from homeassistant.helpers.entity import Entity
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
-    """Set up Better Trends sensors based on the configuration entry."""
-    # Use sensors from options if available, fallback to data
-    sensor_ids = config_entry.options.get("sensors", config_entry.data.get("sensors", []))
-    new_entities = []
+async def async_setup_entry(hass, entry, async_add_entities):
+    """Setup BetterTrends sensor entities based on ConfigEntry options."""
 
-    for sensor_id in sensor_ids:
-        # Generate a unique suffix for each new sensor
-        new_sensor_suffix = f"{sensor_id.split('.')[1]}{SENSOR_SUFFIX}"
-        new_entities.append(BetterTrendsSensor(sensor_id, new_sensor_suffix))
+    sensors = []
+    
+    # Retrieve the list of sensors from ConfigEntry options or initialize default sensors
+    sensor_names = entry.options.get("sensors", [
+        "better_trends_interval",
+        "better_trends_steps",
+        "better_trends_steps_curr"
+    ])
 
-    async_add_entities(new_entities, True)
+    for sensor_name in sensor_names:
+        sensors.append(BetterTrendsSensor(sensor_name))
 
+    async_add_entities(sensors, update_before_add=True)
 
-class BetterTrendsSensor(SensorEntity):
-    """A sensor to track trends based on another sensor's state."""
-
-    def __init__(self, original_sensor_id, unique_suffix):
-        self._original_sensor_id = original_sensor_id
-        self._attr_unique_id = unique_suffix
-        self._attr_name = f"{original_sensor_id} Trend"
+class BetterTrendsSensor(Entity):
+    def __init__(self, name):
+        """Initialize the BetterTrends sensor."""
+        self._name = name
         self._state = None
 
     @property
-    def unique_id(self):
-        """Return a unique ID for this entity."""
-        return self._attr_unique_id
+    def name(self):
+        """Return the name of the sensor."""
+        return self._name
 
     @property
     def state(self):
+        """Return the current state of the sensor."""
         return self._state
 
     async def async_update(self):
-        """Fetch the latest data from the original sensor and calculate a trend."""
-        original_state = self.hass.states.get(self._original_sensor_id)
-        if original_state:
-            # Example logic: copy the state directly (replace with trend calculation if needed)
-            self._state = original_state.state
+        """Update the sensor state."""
+        # Retrieve the latest state; for now, placeholder as self._state can be updated with actual logic
+        self._state = ...  # Replace with logic to calculate or retrieve the sensor's value
