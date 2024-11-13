@@ -1,6 +1,7 @@
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
+from homeassistant.helpers.entity_registry import async_get
 from .const import DOMAIN
 import logging
 
@@ -10,81 +11,79 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for BetterTrends."""
     VERSION = 1
 
-    def __init__(self):
-        self.sensors = []
-
     async def async_step_user(self, user_input=None):
-        """Initial setup to collect the first sensor and continue adding more."""
+        """Initial setup to collect the first sensor."""
+        _LOGGER.debug("Entering initial user setup step")
+        
         if user_input is not None:
             sensor_id = user_input["sensor_0"].strip()
+            _LOGGER.debug("User input received for sensor: %s", sensor_id)
 
-            # Add the first sensor to the list
-            if sensor_id not in self.sensors:
-                self.sensors.append(sensor_id)
-                _LOGGER.debug("Initial sensor added: %s", sensor_id)
+            # Validate sensor
+            if not await self._validate_sensor(sensor_id):
+                _LOGGER.debug("Invalid sensor ID during initial setup: %s", sensor_id)
+                return self.async_show_form(
+                    step_id="user",
+                    data_schema=self._build_schema(),
+                    errors={"sensor_0": "invalid_sensor"}
+                )
 
-            # Move to the next step to add more sensors
-            return await self.async_step_add_more()
+            # Log and save sensor directly to options
+            _LOGGER.debug("Saving initial sensor in options: %s", sensor_id)
+            entry = self.async_create_entry(title="Better Trends", data={}, options={"sensors": [sensor_id]})
+            _LOGGER.debug("Entry created with options: %s", entry.options)
+            return entry
 
-        # Show the form to enter the first sensor
-        return self.async_show_form(
-            step_id="user",
-            data_schema=vol.Schema({vol.Required("sensor_0", default=""): str})
-        )
+        return self.async_show_form(step_id="user", data_schema=self._build_schema())
 
-    async def async_step_add_more(self, user_input=None):
-        """Step to add additional sensors or finish setup."""
-        if user_input is not None:
-            new_sensor = user_input.get("sensor_next", "").strip()
-            if new_sensor and new_sensor not in self.sensors:
-                self.sensors.append(new_sensor)
-                _LOGGER.debug("Additional sensor added: %s", new_sensor)
+    async def _validate_sensor(self, sensor_id):
+        """Check if a sensor exists in the entity registry."""
+        if not sensor_id.startswith("sensor."):
+            return False
+        entity_registry = async_get(self.hass)
+        exists = entity_registry.async_is_registered(sensor_id)
+        _LOGGER.debug("Sensor validation for %s: %s", sensor_id, exists)
+        return exists
 
-            # Check if user chose to finish
-            if user_input.get("finish", False):
-                _LOGGER.debug("Final sensor list saved in options: %s", self.sensors)
-                # Create the entry with the collected sensors in options
-                return self.async_create_entry(title="Better Trends", data={}, options={"sensors": self.sensors})
-
-        # Show form to add more sensors or choose to finish
-        return self.async_show_form(
-            step_id="add_more",
-            data_schema=vol.Schema({
-                vol.Optional("sensor_next", default=""): str,  # Field to add another sensor
-                vol.Optional("finish", default=False): bool   # Checkbox to finish setup
-            })
-        )
+    def _build_schema(self):
+        """Build schema for sensor input."""
+        return vol.Schema({vol.Required("sensor_0", default=""): str})
 
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
+        _LOGGER.debug("Getting options flow for config entry: %s", config_entry.entry_id)
         return BetterTrendsOptionsFlowHandler(config_entry)
 
 
 class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
-    """Options flow to modify sensors after setup."""
+    """Options flow to manage additional sensors."""
 
     def __init__(self, config_entry):
         self.config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
-        """Manage options to add, remove, or edit sensors."""
+        """Handle options to add/remove sensors."""
+        _LOGGER.debug("Options flow init step")
+        
         if user_input is not None:
-            # Collect all sensors from the options form
             sensors = [sensor.strip() for sensor in user_input.values() if sensor]
-            _LOGGER.debug("Updating sensors in options flow: %s", sensors)
+            unique_sensors = list(dict.fromkeys(sensors))  # Remove duplicates
 
-            # Update config entry with unique sensors
-            self.hass.config_entries.async_update_entry(self.config_entry, options={"sensors": sensors})
+            # Log and save to options
+            _LOGGER.debug("Updating sensors in options: %s", unique_sensors)
+            self.hass.config_entries.async_update_entry(self.config_entry, options={"sensors": unique_sensors})
+
+            # Reload the entry to apply changes
             await self.hass.config_entries.async_reload(self.config_entry.entry_id)
             return self.async_create_entry(title="", data={})
 
-        # Retrieve existing sensors from options
         sensors = self.config_entry.options.get("sensors", [])
+        _LOGGER.debug("Loaded sensors from options: %s", sensors)
         return self.async_show_form(step_id="init", data_schema=self._build_options_schema(sensors))
 
     def _build_options_schema(self, sensors):
-        """Builds schema dynamically to manage sensors in options."""
+        """Build schema dynamically for adding/removing sensors."""
         schema = {vol.Optional(f"sensor_{i}", default=sensor): str for i, sensor in enumerate(sensors)}
-        schema[vol.Optional(f"sensor_{len(sensors)}", default="")] = str  # Add a field for a new sensor
+        schema[vol.Optional(f"sensor_{len(sensors)}", default="")] = str
         return vol.Schema(schema)
