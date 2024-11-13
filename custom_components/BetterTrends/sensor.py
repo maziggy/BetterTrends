@@ -21,7 +21,7 @@ class BetterTrendsSensor(Entity):
     def __init__(self, name):
         """Initialize the BetterTrends sensor."""
         self._name = name
-        self._state = None
+        self._state = 0  # Initialize with a default value of 0
 
     @property
     def name(self):
@@ -35,5 +35,5 @@ class BetterTrendsSensor(Entity):
 
     async def async_update(self):
         """Update the sensor state."""
-        # Retrieve the latest state; for now, placeholder as self._state can be updated with actual logic
-        self._state = ...  # Replace with logic to calculate or retrieve the sensor's value
+        # Placeholder for actual update logic; for now, increment the state
+        self._state += 1  # Simulating an update by incrementing the state each time
