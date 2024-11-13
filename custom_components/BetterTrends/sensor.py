@@ -20,19 +20,30 @@ async def async_setup_entry(hass, entry, async_add_entities):
 class BetterTrendsSensor(Entity):
     def __init__(self, name):
         """Initialize the BetterTrends sensor."""
-        self._attr_name = name
-        self._attr_state = None  # Set to None initially
+        self._name = name
+        self._state = 0  # Initialize with a basic state
+
+    @property
+    def name(self):
+        """Return the name of the sensor."""
+        return self._name
+
+    @property
+    def state(self):
+        """Return the current state of the sensor."""
+        return self._state
+
+    @property
+    def available(self):
+        """Indicate if the sensor is available."""
+        return True  # Adjust as needed; use logic to confirm availability if applicable
 
     async def async_update(self):
-        """Update the sensor state."""
+        """Update the sensor state with a simple increment to prevent 'not_implemented' errors."""
         try:
-            # Retrieve a simulated or calculated value
-            self._attr_state = self.get_trend_value()
-            _LOGGER.debug("Updated sensor %s state to %s", self._attr_name, self._attr_state)
+            # Placeholder increment for state; replace with actual calculation as needed
+            self._state += 1
+            _LOGGER.debug("Updated sensor %s state to %s", self._name, self._state)
         except Exception as e:
-            _LOGGER.error("Error updating sensor %s: %s", self._attr_name, e)
-
-    def get_trend_value(self):
-        """Placeholder method to calculate or retrieve a value."""
-        # Example: Return a simple placeholder value; replace with real logic as needed
-        return 100  # Replace this with a real calculation or fetch
+            _LOGGER.error("Error updating sensor %s: %s", self._name, e)
+            self._state = None  # Set state to None on error
