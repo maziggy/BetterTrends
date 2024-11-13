@@ -13,26 +13,20 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None):
         """Initial setup to collect the first sensor."""
-        _LOGGER.debug("Entering initial user setup step")
-        
         if user_input is not None:
             sensor_id = user_input["sensor_0"].strip()
-            _LOGGER.debug("User input received for sensor: %s", sensor_id)
 
             # Validate sensor
             if not await self._validate_sensor(sensor_id):
-                _LOGGER.debug("Invalid sensor ID during initial setup: %s", sensor_id)
                 return self.async_show_form(
                     step_id="user",
                     data_schema=self._build_schema(),
                     errors={"sensor_0": "invalid_sensor"}
                 )
 
-            # Log and save sensor directly to options
+            # Save to options immediately
             _LOGGER.debug("Saving initial sensor in options: %s", sensor_id)
-            entry = self.async_create_entry(title="Better Trends", data={}, options={"sensors": [sensor_id]})
-            _LOGGER.debug("Entry created with options: %s", entry.options)
-            return entry
+            return self.async_create_entry(title="Better Trends", data={}, options={"sensors": [sensor_id]})
 
         return self.async_show_form(step_id="user", data_schema=self._build_schema())
 
@@ -41,9 +35,7 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if not sensor_id.startswith("sensor."):
             return False
         entity_registry = async_get(self.hass)
-        exists = entity_registry.async_is_registered(sensor_id)
-        _LOGGER.debug("Sensor validation for %s: %s", sensor_id, exists)
-        return exists
+        return entity_registry.async_is_registered(sensor_id)
 
     def _build_schema(self):
         """Build schema for sensor input."""
@@ -52,7 +44,6 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
-        _LOGGER.debug("Getting options flow for config entry: %s", config_entry.entry_id)
         return BetterTrendsOptionsFlowHandler(config_entry)
 
 
@@ -64,9 +55,8 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         """Handle options to add/remove sensors."""
-        _LOGGER.debug("Options flow init step")
-        
         if user_input is not None:
+            # Collect sensors from user input
             sensors = [sensor.strip() for sensor in user_input.values() if sensor]
             unique_sensors = list(dict.fromkeys(sensors))  # Remove duplicates
 
@@ -78,8 +68,8 @@ class BetterTrendsOptionsFlowHandler(config_entries.OptionsFlow):
             await self.hass.config_entries.async_reload(self.config_entry.entry_id)
             return self.async_create_entry(title="", data={})
 
+        # Prepopulate sensors from options
         sensors = self.config_entry.options.get("sensors", [])
-        _LOGGER.debug("Loaded sensors from options: %s", sensors)
         return self.async_show_form(step_id="init", data_schema=self._build_options_schema(sensors))
 
     def _build_options_schema(self, sensors):
