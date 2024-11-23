@@ -44,7 +44,7 @@ class BetterTrendsSensor(SensorEntity):
 
     async def _collect_data(self):
         """Collect entity state at regular intervals and calculate the trend."""
-        current_step_entity = "number.trend_sensor_current_step"  # Replace with your actual entity ID
+        current_step_entity = "number.trend_sensor_current_step"  # Hardcoded entity ID
 
         while True:
             try:
@@ -62,7 +62,7 @@ class BetterTrendsSensor(SensorEntity):
                         value = float(state.state)
                         self._add_value(value, steps)
 
-                        # Update the current step entity dynamically
+                        # Dynamically update the current step entity
                         current_step = len(self._values)
                         self.hass.states.async_set(current_step_entity, current_step, {})
                     except ValueError:
@@ -77,7 +77,7 @@ class BetterTrendsSensor(SensorEntity):
 
             self.async_write_ha_state()
             await asyncio.sleep(interval)
-                                    
+                                                
     def _handle_new_value(self, value):
         """Handle a new value and calculate the trend."""
         if not self._values:
