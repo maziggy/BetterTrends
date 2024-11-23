@@ -1,4 +1,4 @@
-from homeassistant.core import HomeAssistant, callback  # Import `callback`
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_STATE_CHANGED
@@ -8,39 +8,26 @@ import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
-_LOGGER = logging.getLogger(__name__)
-_LOGGER.info("BetterTrends sensor.py loaded. Verifying callback import.")
-
-ADDED_ENTITIES = set()  # Track added entities to avoid duplicates
-
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     """Set up BetterTrends sensors from a config entry."""
-    user_entities = entry.data.get("entities", [])  # Get all configured entities
+    # Get all configured entities (new and existing)
+    user_entities = entry.data.get("entities", [])
     interval = DEFAULT_INTERVAL
     trend_values = DEFAULT_TREND_VALUES
 
-    # Add sensors for all user-defined entities, preserving existing ones
+    # Collect all sensors to add
     new_sensors = []
+
+    # Add sensors for user-defined entities
     for entity_id in user_entities:
-        if entity_id not in ADDED_ENTITIES:
-            ADDED_ENTITIES.add(entity_id)
-            new_sensors.append(BetterTrendsSensor(entity_id, trend_values, interval, hass))
+        new_sensors.append(BetterTrendsSensor(entity_id, trend_values, interval, hass))
 
-    # Add editable interval and step sensors, ensuring they're added only once
-    if "sensor.trend_sensor_interval" not in ADDED_ENTITIES:
-        ADDED_ENTITIES.add("sensor.trend_sensor_interval")
-        new_sensors.append(EditableIntervalSensor(interval, hass, entry))
+    # Add editable interval and steps sensors
+    new_sensors.append(EditableIntervalSensor(interval, hass, entry))
+    new_sensors.append(EditableStepsSensor(trend_values, hass, entry))
 
-    if "sensor.trend_sensor_steps" not in ADDED_ENTITIES:
-        ADDED_ENTITIES.add("sensor.trend_sensor_steps")
-        new_sensors.append(EditableStepsSensor(trend_values, hass, entry))
-
-    # Add all the new sensors to Home Assistant
-    if new_sensors:
-        async_add_entities(new_sensors, update_before_add=True)
-    else:
-        _LOGGER.info("No new entities to add for BetterTrends.")
+    # Add all sensors to Home Assistant
+    async_add_entities(new_sensors, update_before_add=True)
 
 
 class BetterTrendsSensor(SensorEntity):
