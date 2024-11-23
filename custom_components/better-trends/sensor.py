@@ -8,9 +8,8 @@ import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
-    """Set up BetterTrends sensors from a config entry."""
+    """Set up BetterTrends sensors and numbers from a config entry."""
     user_entities = entry.data.get("entities", [])
 
     # Create numeric entities for interval and steps
@@ -29,22 +28,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         100,
     )
 
-    # Add these number entities to the "number" domain
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN]["numbers"] = [interval_entity, steps_entity]
+    # Register number entities with the number domain
+    number_platform = hass.helpers.entity_platform.async_get_or_create("number")
+    number_platform.async_add_entities([interval_entity, steps_entity], update_before_add=True)
 
-    # Add trend sensors for user-provided entities
+    # Create trend sensors for user-provided entities
     trend_sensors = [
         BetterTrendsSensor(entity_id, hass, interval_entity, steps_entity)
         for entity_id in user_entities
     ]
-
-    # Register entities
     async_add_entities(trend_sensors, update_before_add=True)
-
-    # Register number entities directly in the "number" domain
-    platform = hass.helpers.entity_platform.async_get_current_platform()
-    platform.async_register_entity_service("number", [interval_entity, steps_entity])
 
 
 class TrendNumber(NumberEntity):
