@@ -8,33 +8,37 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     """Set up BetterTrends numbers from a config entry."""
-    # Create numeric entities for interval, steps, and current step
-    interval_entity = TrendNumber(
-        "Trend Sensor Interval",
-        f"{entry.entry_id}_trend_sensor_interval",
-        DEFAULT_INTERVAL,
-        1,
-        3600,
-    )
-    steps_entity = TrendNumber(
-        "Trend Sensor Steps",
-        f"{entry.entry_id}_trend_sensor_steps",
-        DEFAULT_TREND_VALUES,
-        1,
-        100,
-    )
-    current_step_entity = TrendNumber(
-        "Trend Sensor Current Step",
-        f"{entry.entry_id}_trend_sensor_current_step",
-        0,  # Initial value should be 0 for the current step
-        0,
-        100,
-    )
+    _LOGGER.debug("Initializing TrendNumber entities")
 
-    _LOGGER.debug("Adding TrendNumber entities: interval_entity, steps_entity, and current_step_entity.")
+    try:
+        # Create numeric entities for interval, steps, and current step
+        interval_entity = TrendNumber(
+            "Trend Sensor Interval",
+            f"{entry.entry_id}_trend_sensor_interval",
+            DEFAULT_INTERVAL,
+            1,
+            3600,
+        )
+        steps_entity = TrendNumber(
+            "Trend Sensor Steps",
+            f"{entry.entry_id}_trend_sensor_steps",
+            DEFAULT_TREND_VALUES,
+            1,
+            100,
+        )
+        current_step_entity = TrendNumber(
+            "Trend Sensor Current Step",
+            f"{entry.entry_id}_trend_sensor_current_step",
+            0,  # Initial value should be 0 for the current step
+            0,
+            100,
+        )
 
-    # Add entities to Home Assistant
-    async_add_entities([interval_entity, steps_entity, current_step_entity], update_before_add=True)
+        _LOGGER.debug("Adding TrendNumber entities: interval_entity, steps_entity, and current_step_entity.")
+        async_add_entities([interval_entity, steps_entity, current_step_entity], update_before_add=True)
+        _LOGGER.debug("Entities added successfully")
+    except Exception as e:
+        _LOGGER.error(f"Error setting up entities: {e}")
 
 
 class TrendNumber(NumberEntity):
