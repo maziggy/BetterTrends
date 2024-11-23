@@ -24,11 +24,11 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             # Get the new entity based on the dynamic key
-            if len(self.entities) < 2:
-                new_entity_key = f"entity_{len(self.entities)} or leave blnak to finish."
-            else:
+            if !self.entities or len(self.entities) < 2:
                 new_entity_key = f"entity_{len(self.entities)}"
-
+            else:
+                new_entity_key = f"entity_{len(self.entities)} or leave blank to finish."
+                
             new_entity = user_input.get(new_entity_key, "")
 
             if new_entity:
