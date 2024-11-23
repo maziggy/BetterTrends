@@ -1,8 +1,8 @@
 from homeassistant.helpers.event import async_track_state_change
 from homeassistant.components.sensor import SensorEntity
+from homeassistant.setup import async_setup_component
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from .const import DOMAIN
 import logging
 import asyncio
 
@@ -42,31 +42,29 @@ class BetterTrendsSensor(SensorEntity):
     def native_value(self):
         """Return the current trend value."""
         return self._state
-
+        
     async def async_added_to_hass(self):
-        """Start periodic data collection and initialize default states."""
-        # Set default values for `self._state` and `current_step_entity`
-        self.async_write_ha_state()
-        self.hass.states.async_set(self._current_step_entity, 0, {})
+        """Ensure the number platform is initialized before sensor setup."""
+        while "number" not in self.hass.config.components:
+            _LOGGER.info("Waiting for number platform to initialize...")
+            await asyncio.sleep(1)
 
-        # Fetch the current interval and steps
+        # Now continue with initialization
+        for _ in range(10):  # Retry for up to 10 seconds
+            if self.hass.states.get(self._interval_entity) and self.hass.states.get(self._steps_entity):
+                _LOGGER.info(f"Number entities found: {self._interval_entity}, {self._steps_entity}")
+                break
+            _LOGGER.warning(f"Waiting for {self._interval_entity} and {self._steps_entity} to become available...")
+            await asyncio.sleep(1)
+
+        # Log error if entities are still missing after retries
+        if not self.hass.states.get(self._interval_entity) or not self.hass.states.get(self._steps_entity):
+            _LOGGER.error(f"Number entities {self._interval_entity} and {self._steps_entity} not found after retries")
+            return  # Exit to prevent further errors
+
         self._update_interval_and_steps()
-
-        # Listen for state changes to interval and steps
-        self._unsub_listeners.append(
-            async_track_state_change(
-                self.hass, self._interval_entity, self._handle_interval_change
-            )
-        )
-        self._unsub_listeners.append(
-            async_track_state_change(
-                self.hass, self._steps_entity, self._handle_steps_change
-            )
-        )
-
-        # Start periodic data collection
         self.hass.loop.create_task(self._collect_data())
-
+    
     async def async_will_remove_from_hass(self):
         """Clean up state listeners when the entity is removed."""
         for unsub in self._unsub_listeners:
@@ -110,7 +108,13 @@ class BetterTrendsSensor(SensorEntity):
         if new_state and new_state.state.isdigit():
             self._steps = int(new_state.state)
             _LOGGER.info(f"Updated steps to {self._steps} for {self._attr_name}")
-
+            
+    async def _handle_interval_change(self, entity_id, old_state, new_state):
+        """Handle changes to the interval entity."""
+        if new_state and new_state.state.isdigit():
+            self._interval = int(new_state.state)
+            _LOGGER.info(f"Updated interval to {self._interval} seconds for {self._attr_name}")
+        
     async def _collect_data(self):
         """Collect entity state at regular intervals and calculate the trend."""
         while True:
