@@ -12,7 +12,7 @@ class BetterTrendsSensor(SensorEntity):
         self._attr_unique_id = f"better_trends_{entity_id}"
         self._state = None
         self._trend_values = trend_values
-        self._value_history = [0.0] * trend_values  # Initialize rolling history with zeros
+        self._history = {f"value{i}": 0.0 for i in range(trend_values)}  # Rolling history
 
     @property
     def native_value(self):
@@ -28,20 +28,34 @@ class BetterTrendsSensor(SensorEntity):
                 latest_value = float(state.state)
 
                 # Update the rolling history
-                self._value_history.pop(0)  # Remove the oldest value
-                self._value_history.append(latest_value)  # Add the newest value
+                self._update_history(latest_value)
 
-                # Calculate the trend using your logic
-                self._state = self._calculate_trend(latest_value, self._value_history)
+                # Calculate the trend
+                self._state = self._calculate_trend(latest_value)
             except ValueError:
                 # Handle cases where the entity's state is not a valid float
                 self._state = None
 
-    def _calculate_trend(self, last, history):
-        """Calculate the trend based on the last value and rolling history."""
-        # Sum the values in the history (excluding the most recent one)
-        summed_values = sum(history[:-1])
-        trend = round(last - (summed_values / len(history[:-1])), 2)
+    def _update_history(self, latest_value):
+        """Update the rolling history with the latest value."""
+        for i in range(self._trend_values - 1, 0, -1):
+            self._history[f"value{i}"] = self._history[f"value{i - 1}"]
+        self._history["value0"] = latest_value
+
+    def _calculate_trend(self, last):
+        """Calculate the trend based on the latest value and rolling history."""
+        total = 0
+        counter = 1
+
+        # Sum the past values based on the trend_values limit
+        for key, value in self._history.items():
+            if "value" in key and counter <= self._trend_values:
+                total += value
+                counter += 1
+
+        # Calculate the trend as last - (average of past values)
+        trend = round(last - (total / self._trend_values), 1)
+
         return trend
 
 
