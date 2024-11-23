@@ -1,6 +1,6 @@
+from homeassistant.core import HomeAssistant, callback  # Import `callback`
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
 from homeassistant.const import EVENT_STATE_CHANGED
 from .const import DOMAIN, DEFAULT_INTERVAL, DEFAULT_TREND_VALUES
 import logging
