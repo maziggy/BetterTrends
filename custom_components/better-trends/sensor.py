@@ -2,60 +2,67 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from .const import DOMAIN, DEFAULT_INTERVAL, DEFAULT_TREND_VALUES
+import asyncio
+import logging
+
+_LOGGER = logging.getLogger(__name__)
+
 
 class BetterTrendsSensor(SensorEntity):
     """A sensor to calculate trends for user-provided entities."""
 
-    def __init__(self, entity_id, trend_values):
+    def __init__(self, entity_id, trend_values, interval):
         self._entity_id = entity_id
+        self._trend_values = trend_values  # Number of steps for trend calculation
+        self._interval = interval  # Collection interval (seconds)
+        self._values = []  # Rolling buffer to store collected states
+        self._state = None
         self._attr_name = f"Trend {entity_id}"
         self._attr_unique_id = f"better_trends_{entity_id}"
-        self._state = None
-        self._trend_values = trend_values
-        self._history = {f"value{i}": 0.0 for i in range(trend_values)}  # Rolling history
 
     @property
     def native_value(self):
         """Return the current trend value."""
         return self._state
 
-    async def async_update(self):
-        """Fetch the latest state from the monitored entity and calculate the trend."""
-        state = self.hass.states.get(self._entity_id)
-        if state is not None:
+    async def async_added_to_hass(self):
+        """Start the periodic data collection when the sensor is added."""
+        self.hass.loop.create_task(self._collect_data())
+
+    async def _collect_data(self):
+        """Collect entity state at regular intervals and calculate trend."""
+        while True:
             try:
-                # Get the latest value from the monitored entity
-                latest_value = float(state.state)
+                # Fetch the latest state from the monitored entity
+                state = self.hass.states.get(self._entity_id)
+                if state is not None:
+                    try:
+                        value = float(state.state)
+                        self._add_value(value)
+                        if len(self._values) == self._trend_values:
+                            self._state = self._calculate_trend()
+                            self.async_write_ha_state()  # Notify Home Assistant about state change
+                    except ValueError:
+                        _LOGGER.warning(f"Invalid state for {self._entity_id}: {state.state}")
+                else:
+                    _LOGGER.warning(f"Entity {self._entity_id} not found.")
+            except Exception as e:
+                _LOGGER.error(f"Error collecting data for {self._entity_id}: {e}")
 
-                # Update the rolling history
-                self._update_history(latest_value)
+            # Wait for the next collection interval
+            await asyncio.sleep(self._interval)
 
-                # Calculate the trend
-                self._state = self._calculate_trend(latest_value)
-            except ValueError:
-                # Handle cases where the entity's state is not a valid float
-                self._state = None
+    def _add_value(self, value):
+        """Add a new value to the rolling buffer."""
+        if len(self._values) >= self._trend_values:
+            self._values.pop(0)  # Remove the oldest value
+        self._values.append(value)
 
-    def _update_history(self, latest_value):
-        """Update the rolling history with the latest value."""
-        for i in range(self._trend_values - 1, 0, -1):
-            self._history[f"value{i}"] = self._history[f"value{i - 1}"]
-        self._history["value0"] = latest_value
-
-    def _calculate_trend(self, last):
-        """Calculate the trend based on the latest value and rolling history."""
-        total = 0
-        counter = 1
-
-        # Sum the past values based on the trend_values limit
-        for key, value in self._history.items():
-            if "value" in key and counter <= self._trend_values:
-                total += value
-                counter += 1
-
-        # Calculate the trend as last - (average of past values)
-        trend = round(last - (total / self._trend_values), 1)
-
+    def _calculate_trend(self):
+        """Calculate the trend based on collected values."""
+        total = sum(self._values)
+        trend = round(total / self._trend_values, 1)
+        _LOGGER.debug(f"Calculated trend for {self._entity_id}: {trend}")
         return trend
 
 
@@ -96,7 +103,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     # Create sensors for user-provided entities with trend calculation
     trend_sensors = [
-        BetterTrendsSensor(entity_id, trend_values) for entity_id in user_entities
+        BetterTrendsSensor(entity_id, trend_values, interval) for entity_id in user_entities
     ]
 
     # Add the additional auto-created sensors
