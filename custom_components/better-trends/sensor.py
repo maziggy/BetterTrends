@@ -116,10 +116,9 @@ class BetterTrendsSensor(SensorEntity):
             _LOGGER.info(f"Updated interval to {self._interval} seconds for {self._attr_name}")
         
     async def _collect_data(self):
-        """Collect entity state at regular intervals and calculate the trend."""
         while True:
             try:
-                # Update interval and steps dynamically
+                _LOGGER.debug(f"Collecting data for {self._entity_id}")
                 self._update_interval_and_steps()
 
                 state = self.hass.states.get(self._entity_id)
@@ -128,22 +127,20 @@ class BetterTrendsSensor(SensorEntity):
                         value = float(state.state)
                         self._add_value(value)
 
-                        # Dynamically update the current step entity
                         current_step = len(self._values)
                         self.hass.states.async_set(self._current_step_entity, current_step, {})
+                        _LOGGER.debug(f"Current step set to: {current_step}")
                     except ValueError:
                         _LOGGER.warning(f"Invalid state for {self._entity_id}: {state.state}")
-                        self._state = None
                 else:
                     _LOGGER.warning(f"Entity {self._entity_id} not found.")
-                    self._state = None
+
             except Exception as e:
-                _LOGGER.error(f"Error collecting data for {self._entity_id}: {e}")
-                self._state = None
+                _LOGGER.error(f"Error in _collect_data: {e}")
 
-            self.async_write_ha_state()
+            _LOGGER.debug(f"Sleeping for {self._interval} seconds")
             await asyncio.sleep(self._interval)
-
+                    
     def _add_value(self, value):
         """Maintain a rolling buffer and calculate trend when steps are reached."""
         self._values.append(value)
@@ -152,7 +149,8 @@ class BetterTrendsSensor(SensorEntity):
         if len(self._values) > self._steps:
             self._values.pop(0)  # Remove the oldest value
 
-        _LOGGER.debug(f"Buffer updated: {self._values}")
+        # Log the updated buffer and its size
+        _LOGGER.debug(f"Buffer updated: {self._values} (size: {len(self._values)})")
 
         # Calculate trend if buffer size reaches the step count
         if len(self._values) == self._steps:
