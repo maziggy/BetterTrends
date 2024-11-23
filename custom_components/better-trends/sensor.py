@@ -8,6 +8,7 @@ import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     """Set up BetterTrends sensors from a config entry."""
     user_entities = entry.data.get("entities", [])
@@ -30,7 +31,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     _LOGGER.debug("Adding TrendNumber entities: interval_entity and steps_entity")
 
-    # Force state update after registration
+    # Add interval and step entities to Home Assistant
     async_add_entities([interval_entity, steps_entity], update_before_add=True)
 
     # Create trend sensors for user-provided entities
@@ -39,28 +40,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         for entity_id in user_entities
     ]
     async_add_entities(trend_sensors, update_before_add=True)
-        
 
-async def async_create_input_number(hass, object_id, name, min_value, max_value, initial_value):
-    """Helper to create an input_number entity if it doesn't already exist."""
-    registry = await hass.helpers.entity_registry.async_get_registry()
-    if f"input_number.{object_id}" not in registry.entities:
-        _LOGGER.info(f"Creating input_number.{object_id}")
-        await hass.services.async_call(
-            "input_number",
-            "create",
-            {
-                "name": name,
-                "min": min_value,
-                "max": max_value,
-                "step": 1,
-                "mode": "box",
-                "initial": initial_value,
-                "unique_id": object_id,
-            },
-        )
-        
-        
+
 class TrendNumber(NumberEntity):
     """A numeric entity representing a configurable value."""
 
@@ -73,33 +54,35 @@ class TrendNumber(NumberEntity):
         self._attr_step = 1  # Step size for adjustments
         self._attr_mode = NumberMode.BOX  # Editable field in the UI
 
-        _LOGGER.debug(
-            f"Initialized {self._attr_name} with value {self._attr_native_value}, "
-            f"min: {self._attr_min_value}, max: {self._attr_max_value}"
-        )
-
     @property
     def native_value(self):
-        """Return the current value."""
-        _LOGGER.debug(f"{self._attr_name}: Getting current value {self._attr_native_value}")
+        """Return the current value or a default if invalid."""
+        if self._attr_native_value is None or self._attr_native_value < self._attr_min_value:
+            return self._attr_min_value
         return self._attr_native_value
 
     async def async_set_native_value(self, value: float):
         """Set a new value."""
-        _LOGGER.debug(f"{self._attr_name}: Setting value to {value}")
+        if value < self._attr_min_value or value > self._attr_max_value:
+            _LOGGER.warning(
+                f"Attempted to set {self._attr_name} to {value}, which is out of bounds. "
+                f"Valid range: {self._attr_min_value}-{self._attr_max_value}."
+            )
+            return
+
         self._attr_native_value = int(value)
         self.async_write_ha_state()
         _LOGGER.info(f"{self._attr_name} updated to {self._attr_native_value}")
-                
+
 
 class BetterTrendsSensor(SensorEntity):
     """A sensor to calculate trends for user-provided entities."""
 
-    def __init__(self, entity_id, hass, interval_entity_id, steps_entity_id):
+    def __init__(self, entity_id, hass, interval_entity: TrendNumber, steps_entity: TrendNumber):
         self._entity_id = entity_id
         self.hass = hass
-        self._interval_entity_id = interval_entity_id
-        self._steps_entity_id = steps_entity_id
+        self._interval_entity = interval_entity
+        self._steps_entity = steps_entity
         self._values = []
         self._state = None
         self._attr_name = f"Trend {entity_id}"
@@ -118,11 +101,9 @@ class BetterTrendsSensor(SensorEntity):
         """Collect entity state at regular intervals and calculate the trend."""
         while True:
             try:
-                # Fetch interval and steps dynamically from input_number entities
-                interval_state = self.hass.states.get(self._interval_entity_id)
-                steps_state = self.hass.states.get(self._steps_entity_id)
-                interval = int(interval_state.state) if interval_state else 60
-                steps = int(steps_state.state) if steps_state else 10
+                # Fetch interval and steps dynamically from TrendNumber entities
+                interval = self._interval_entity.native_value
+                steps = self._steps_entity.native_value
 
                 state = self.hass.states.get(self._entity_id)
                 if state:
@@ -140,6 +121,12 @@ class BetterTrendsSensor(SensorEntity):
                 self._state = None
 
             self.async_write_ha_state()
+
+            # Ensure interval is valid before calling asyncio.sleep
+            if interval is None or interval <= 0:
+                _LOGGER.error(f"Invalid interval: {interval}. Defaulting to 60 seconds.")
+                interval = 60
+
             await asyncio.sleep(interval)
 
     def _handle_new_value(self, value, steps):
