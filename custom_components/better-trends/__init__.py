@@ -25,9 +25,9 @@ async def async_unload_entry(hass, entry):
 
     if unload_ok:
         # Safely remove entry from hass.data
-        if DOMAIN in hass.data and entry.entry_id in hass.data[DOMAIN]:
+        if DOMAIN in hass.data:
             hass.data[DOMAIN].pop(entry.entry_id, None)
-        if not hass.data[DOMAIN]:
-            hass.data.pop(DOMAIN, None)
+            if not hass.data[DOMAIN]:  # If the domain is empty, remove it
+                hass.data.pop(DOMAIN, None)
 
     return unload_ok

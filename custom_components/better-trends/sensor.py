@@ -43,7 +43,8 @@ class BetterTrendsSensor(SensorEntity):
 
     async def async_added_to_hass(self):
         """Ensure number entities are initialized before starting."""
-        for _ in range(10):  # Retry for up to 10 seconds
+        retries = 10  # Retry for up to 10 seconds
+        for _ in range(retries):
             interval_state = self.hass.states.get(self._interval_entity)
             steps_state = self.hass.states.get(self._steps_entity)
 
@@ -55,10 +56,14 @@ class BetterTrendsSensor(SensorEntity):
                 f"Waiting for {self._interval_entity} and {self._steps_entity} to become available..."
             )
             await asyncio.sleep(1)
+        else:
+            _LOGGER.error(
+                f"Number entities {self._interval_entity} and {self._steps_entity} were not found after {retries} retries."
+            )
 
         self._update_interval_and_steps()
         self.hass.loop.create_task(self._collect_data())
-    
+        
     async def async_will_remove_from_hass(self):
         """Clean up state listeners when the entity is removed."""
         for unsub in self._unsub_listeners:
@@ -89,7 +94,7 @@ class BetterTrendsSensor(SensorEntity):
             self._steps = 10
 
         _LOGGER.info(f"Updated interval to {self._interval} seconds and steps to {self._steps}")
-    
+        
     async def _collect_data(self):
         """Collect entity state at regular intervals and calculate the trend."""
         while True:
