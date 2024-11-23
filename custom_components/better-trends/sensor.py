@@ -74,6 +74,7 @@ class BetterTrendsSensor(SensorEntity):
         self._unsub_listeners.clear()
 
     def _update_interval_and_steps(self):
+        _LOGGER.info("Entered _update_interval_and_steps")
         """Fetch the current interval and steps from the number entities."""
         interval_state = self.hass.states.get(self._interval_entity)
         self._interval = int(interval_state.state) if interval_state and interval_state.state.isdigit() else 60
@@ -81,7 +82,7 @@ class BetterTrendsSensor(SensorEntity):
         steps_state = self.hass.states.get(self._steps_entity)
         self._steps = int(steps_state.state) if steps_state and steps_state.state.isdigit() else 10
 
-        _LOGGER.debug(f"interval: {interval_state}, step: ${steps_state}")
+        _LOGGER.info(f"interval: {interval_state}, step: ${steps_state}")
         
     async def _handle_interval_change(self, entity_id, old_state, new_state):
         """Handle changes to the interval entity."""
