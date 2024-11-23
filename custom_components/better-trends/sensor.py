@@ -44,7 +44,7 @@ class BetterTrendsSensor(SensorEntity):
 
     async def _collect_data(self):
         """Collect entity state at regular intervals and calculate the trend."""
-        current_step_entity = "number.current_step_entity"  # Replace with your actual entity ID
+        current_step_entity = "number.trend_sensor_current_step"  # Replace with your actual entity ID
 
         while True:
             try:
@@ -58,8 +58,12 @@ class BetterTrendsSensor(SensorEntity):
                         value = float(state.state)
                         self._handle_new_value(value)
 
-                        # Update the current step entity with the latest value
-                        self.hass.states.async_set(current_step_entity, value, {})
+                        # Update the current step entity dynamically
+                        steps_state = self.hass.states.get(self._steps_entity)
+                        steps = int(steps_state.state) if steps_state and steps_state.state.isdigit() else 10
+                        current_step = min(len(self._values), steps)
+
+                        self.hass.states.async_set(current_step_entity, current_step, {})
                     except ValueError:
                         _LOGGER.warning(f"Invalid state for {self._entity_id}: {state.state}")
                         self._state = None
@@ -72,7 +76,7 @@ class BetterTrendsSensor(SensorEntity):
 
             self.async_write_ha_state()
             await asyncio.sleep(interval)
-            
+                        
     def _handle_new_value(self, value):
         """Handle a new value and calculate the trend."""
         if not self._values:
