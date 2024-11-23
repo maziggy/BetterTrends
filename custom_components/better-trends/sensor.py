@@ -74,26 +74,36 @@ class BetterTrendsSensor(SensorEntity):
         self._unsub_listeners.clear()
         
     def _update_interval_and_steps(self):
-    """Fetch the current interval and steps from the number entities."""
-    _LOGGER.info("Entered _update_interval_and_steps")
-    interval_state = self.hass.states.get(self._interval_entity)
-    steps_state = self.hass.states.get(self._steps_entity)
+        """Fetch the current interval and steps from the number entities."""
+        _LOGGER.info("Entered _update_interval_and_steps")
 
-    _LOGGER.info(f"Fetched interval_state: {interval_state}, steps_state: {steps_state}")
+        # Fetch the states of interval and steps entities
+        interval_state = self.hass.states.get(self._interval_entity)
+        steps_state = self.hass.states.get(self._steps_entity)
 
-    try:
-        self._interval = int(interval_state.state) if interval_state and interval_state.state.isdigit() else 60
-    except Exception as e:
-        _LOGGER.error(f"Error parsing interval_state: {e}")
-        self._interval = 60
+        _LOGGER.info(f"Fetched interval_state: {interval_state}, steps_state: {steps_state}")
 
-    try:
-        self._steps = int(steps_state.state) if steps_state and steps_state.state.isdigit() else 10
-    except Exception as e:
-        _LOGGER.error(f"Error parsing steps_state: {e}")
-        self._steps = 10
+        # Check interval_state
+        if interval_state and interval_state.state.isdigit():
+            self._interval = int(interval_state.state)
+        else:
+            _LOGGER.warning(
+                f"Interval entity {self._interval_entity} is missing or invalid. "
+                f"Using default value of 60 seconds."
+            )
+            self._interval = 60
 
-    _LOGGER.info(f"Updated interval to {self._interval} and steps to {self._steps}")
+        # Check steps_state
+        if steps_state and steps_state.state.isdigit():
+            self._steps = int(steps_state.state)
+        else:
+            _LOGGER.warning(
+                f"Steps entity {self._steps_entity} is missing or invalid. "
+                f"Using default value of 10 steps."
+            )
+            self._steps = 10
+
+        _LOGGER.info(f"Updated interval to {self._interval} seconds and steps to {self._steps}")
 
     async def _handle_steps_change(self, entity_id, old_state, new_state):
         """Handle changes to the steps entity."""
