@@ -72,7 +72,7 @@ class BetterTrendsSensor(SensorEntity):
         for unsub in self._unsub_listeners:
             unsub()
         self._unsub_listeners.clear()
-        
+
     def _update_interval_and_steps(self):
         """Fetch the current interval and steps from the number entities."""
         _LOGGER.info("Entered _update_interval_and_steps")
