@@ -17,21 +17,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             f"{entry.entry_id}_trend_sensor_interval",
             DEFAULT_INTERVAL,
             1,
-            3600,
+            10,
         )
         steps_entity = TrendNumber(
             "Trend Sensor Steps",
             f"{entry.entry_id}_trend_sensor_steps",
             DEFAULT_TREND_VALUES,
             1,
-            100,
+            1000,
         )
         current_step_entity = TrendNumber(
             "Trend Sensor Current Step",
             f"{entry.entry_id}_trend_sensor_current_step",
             0,  # Initial value should be 0 for the current step
             0,
-            100,
+            1000,
         )
 
         _LOGGER.debug("Adding TrendNumber entities: interval_entity, steps_entity, and current_step_entity.")
