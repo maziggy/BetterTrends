@@ -10,36 +10,39 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     """Set up BetterTrends numbers from a config entry."""
     _LOGGER.debug("Initializing TrendNumber entities")
 
-    try:
-        # Create numeric entities for interval, steps, and current step
-        interval_entity = TrendNumber(
-            "Trend Sensor Interval",
-            f"{entry.entry_id}_trend_sensor_interval",
-            DEFAULT_INTERVAL,
-            1,
-            3600,
-        )
-        steps_entity = TrendNumber(
-            "Trend Sensor Steps",
-            f"{entry.entry_id}_trend_sensor_steps",
-            DEFAULT_TREND_VALUES,
-            1,
-            100,
-        )
-        current_step_entity = TrendNumber(
-            "Trend Sensor Current Step",
-            f"{entry.entry_id}_trend_sensor_current_step",
-            0,  # Initial value should be 0 for the current step
-            0,
-            100,
-        )
+    # Create numeric entities for interval, steps, and current step
+    interval_entity = TrendNumber(
+        "Trend Sensor Interval",
+        f"{entry.entry_id}_trend_sensor_interval",
+        DEFAULT_INTERVAL,
+        1,
+        3600,
+    )
+    steps_entity = TrendNumber(
+        "Trend Sensor Steps",
+        f"{entry.entry_id}_trend_sensor_steps",
+        DEFAULT_TREND_VALUES,
+        1,
+        100,
+    )
+    current_step_entity = TrendNumber(
+        "Trend Sensor Current Step",
+        f"{entry.entry_id}_trend_sensor_current_step",
+        0,  # Initial value should be 0 for the current step
+        0,
+        100,
+    )
 
-        _LOGGER.debug("Adding TrendNumber entities: interval_entity, steps_entity, and current_step_entity.")
-        async_add_entities([interval_entity, steps_entity, current_step_entity], update_before_add=True)
-        _LOGGER.debug("Entities added successfully")
-    except Exception as e:
-        _LOGGER.error(f"Error setting up entities: {e}")
+    _LOGGER.debug("Adding TrendNumber entities: interval_entity, steps_entity, and current_step_entity.")
+    async_add_entities([interval_entity, steps_entity, current_step_entity], update_before_add=True)
 
+    # Store reference for use in sensor.py
+    hass.data[DOMAIN][entry.entry_id] = {
+        "interval_entity": interval_entity,
+        "steps_entity": steps_entity,
+        "current_step_entity": current_step_entity,
+    }
+    
 
 class TrendNumber(NumberEntity):
     """A numeric entity representing a configurable value."""

@@ -31,12 +31,16 @@ class BetterTrendsSensor(SensorEntity):
         self._state = 0  # Default state to 0
         self._attr_name = f"Trend {entity_id}"
         self._attr_unique_id = f"better_trends_{entity_id}"
-        self._interval_entity = "number.trend_sensor_interval"
-        self._steps_entity = "number.trend_sensor_steps"
+
+        # Retrieve the number entities from hass.data
+        platform_data = self.hass.data[DOMAIN][entry.entry_id]
+        self._interval_entity = platform_data["interval_entity"]
+        self._steps_entity = platform_data["steps_entity"]
+        self._current_step_entity = platform_data["current_step_entity"]
+
         self._interval = 60  # Default interval
         self._steps = 10  # Default steps
         self._unsub_listeners = []  # List to store unsub functions for state listeners
-        self._current_step_entity = "number.trend_sensor_current_step"
 
     @property
     def native_value(self):
@@ -45,22 +49,18 @@ class BetterTrendsSensor(SensorEntity):
 
     async def async_added_to_hass(self):
         """Start periodic data collection and initialize default states."""
-        # Set default values for `self._state` and `current_step_entity`
-        self.async_write_ha_state()
-        self.hass.states.async_set(self._current_step_entity, 0, {})
-
         # Fetch the current interval and steps
         self._update_interval_and_steps()
 
         # Listen for state changes to interval and steps
         self._unsub_listeners.append(
             async_track_state_change(
-                self.hass, self._interval_entity, self._handle_interval_change
+                self.hass, self._interval_entity.entity_id, self._handle_interval_change
             )
         )
         self._unsub_listeners.append(
             async_track_state_change(
-                self.hass, self._steps_entity, self._handle_steps_change
+                self.hass, self._steps_entity.entity_id, self._handle_steps_change
             )
         )
 
@@ -75,11 +75,8 @@ class BetterTrendsSensor(SensorEntity):
 
     def _update_interval_and_steps(self):
         """Fetch the current interval and steps from the number entities."""
-        interval_state = self.hass.states.get(self._interval_entity)
-        self._interval = int(interval_state.state) if interval_state and interval_state.state.isdigit() else 60
-
-        steps_state = self.hass.states.get(self._steps_entity)
-        self._steps = int(steps_state.state) if steps_state and steps_state.state.isdigit() else 10
+        self._interval = int(self._interval_entity.native_value or 60)
+        self._steps = int(self._steps_entity.native_value or 10)
 
     async def _handle_interval_change(self, entity_id, old_state, new_state):
         """Handle changes to the interval entity."""
@@ -97,9 +94,7 @@ class BetterTrendsSensor(SensorEntity):
         """Collect entity state at regular intervals and calculate the trend."""
         while True:
             try:
-                # Update interval and steps dynamically
-                self._update_interval_and_steps()
-
+                # Fetch the state of the target entity
                 state = self.hass.states.get(self._entity_id)
                 if state:
                     try:
@@ -108,7 +103,8 @@ class BetterTrendsSensor(SensorEntity):
 
                         # Dynamically update the current step entity
                         current_step = len(self._values)
-                        self.hass.states.async_set(self._current_step_entity, current_step, {})
+                        self._current_step_entity._attr_native_value = current_step
+                        self._current_step_entity.async_write_ha_state()
                     except ValueError:
                         _LOGGER.warning(f"Invalid state for {self._entity_id}: {state.state}")
                         self._state = None
