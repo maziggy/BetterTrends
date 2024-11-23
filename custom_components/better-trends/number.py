@@ -52,6 +52,10 @@ class TrendNumber(NumberEntity):
         self._attr_max_value = max_value
         self._attr_step = 1  # Step size for adjustments
         self._attr_mode = NumberMode.BOX  # Editable field in the UI
+        
+    async def async_added_to_hass(self):
+        """Set initial state when added to hass."""
+        self.async_write_ha_state()
 
     @property
     def native_value(self):
