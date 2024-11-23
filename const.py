@@ -1,0 +1,4 @@
+DOMAIN = "better-trends"
+CONF_ENTITIES = "entities"
+DEFAULT_INTERVAL = 12
+DEFAULT_TREND_VALUES = 10
