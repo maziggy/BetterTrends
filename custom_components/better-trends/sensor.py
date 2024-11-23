@@ -1,7 +1,6 @@
 from homeassistant.components.number import NumberEntity
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EVENT_STATE_CHANGED
 from homeassistant.core import HomeAssistant
 from .const import DOMAIN, DEFAULT_INTERVAL, DEFAULT_TREND_VALUES
 import logging
