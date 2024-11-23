@@ -18,15 +18,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass, entry):
     """Unload a config entry."""
-    _LOGGER.debug(f"Unloading BetterTrends entry: {entry.entry_id}")
-
-    # Unload the platforms
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, ["sensor", "number"])
+    unload_ok = await hass.config_entries.async_forward_entry_unload(entry, "sensor")
+    unload_ok &= await hass.config_entries.async_forward_entry_unload(entry, "number")
 
     if unload_ok:
-        _LOGGER.debug(f"Successfully unloaded BetterTrends platforms for entry: {entry.entry_id}")
-        hass.data[DOMAIN].pop(entry.entry_id, None)
+        # Safely remove entry from hass.data
+        if DOMAIN in hass.data and entry.entry_id in hass.data[DOMAIN]:
+            hass.data[DOMAIN].pop(entry.entry_id, None)
+        if not hass.data[DOMAIN]:
+            hass.data.pop(DOMAIN, None)
 
     return unload_ok
