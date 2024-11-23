@@ -36,22 +36,22 @@ class TrendNumber(NumberEntity):
     def __init__(self, name, unique_id, initial_value, min_value, max_value):
         self._attr_name = name
         self._attr_unique_id = unique_id
-        self._value = initial_value
+        self._attr_native_value = initial_value  # Use native_value instead of value
         self._attr_min_value = min_value
         self._attr_max_value = max_value
         self._attr_step = 1
         self._attr_mode = NumberMode.BOX  # Allow direct user input in the UI
 
     @property
-    def value(self):
+    def native_value(self):
         """Return the current value."""
-        return self._value
+        return self._attr_native_value
 
-    async def async_set_value(self, value: float):
+    async def async_set_native_value(self, value: float):
         """Set a new value."""
-        self._value = int(value)
+        self._attr_native_value = int(value)
         self.async_write_ha_state()
-        _LOGGER.info(f"{self._attr_name} updated to {self._value}")
+        _LOGGER.info(f"{self._attr_name} updated to {self._attr_native_value}")
 
 
 class BetterTrendsSensor(SensorEntity):
@@ -98,7 +98,7 @@ class BetterTrendsSensor(SensorEntity):
             self.async_write_ha_state()
 
             # Use the interval from the linked number entity
-            await asyncio.sleep(self._interval_entity.value)
+            await asyncio.sleep(self._interval_entity.native_value)
 
     def _handle_new_value(self, value):
         """Handle a new value and calculate the trend."""
@@ -106,12 +106,12 @@ class BetterTrendsSensor(SensorEntity):
             self._state = 0.0
         else:
             self._add_value(value)
-            if len(self._values) == self._steps_entity.value:
+            if len(self._values) == self._steps_entity.native_value:
                 self._state = self._calculate_trend()
 
     def _add_value(self, value):
         """Maintain a fixed-length buffer."""
-        if len(self._values) >= self._steps_entity.value:
+        if len(self._values) >= self._steps_entity.native_value:
             self._values.pop(0)
         self._values.append(value)
 
