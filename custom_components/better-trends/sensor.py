@@ -9,26 +9,34 @@ import asyncio
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
-    """Set up BetterTrends sensors and input numbers from a config entry."""
+    """Set up BetterTrends sensors from a config entry."""
     user_entities = entry.data.get("entities", [])
 
-    # Ensure input_number entities exist for interval and steps
-    await async_create_input_number(hass, "trend_sensor_interval", "Trend Sensor Interval", 1, 3600, DEFAULT_INTERVAL)
-    await async_create_input_number(hass, "trend_sensor_steps", "Trend Sensor Steps", 1, 100, DEFAULT_TREND_VALUES)
-
-    # Get the input_number entities
-    interval_entity_id = "input_number.trend_sensor_interval"
-    steps_entity_id = "input_number.trend_sensor_steps"
+    # Create numeric entities for interval and steps
+    interval_entity = TrendNumber(
+        "Trend Sensor Interval",
+        "trend_sensor_interval",
+        DEFAULT_INTERVAL,
+        1,
+        3600,
+    )
+    steps_entity = TrendNumber(
+        "Trend Sensor Steps",
+        "trend_sensor_steps",
+        DEFAULT_TREND_VALUES,
+        1,
+        100,
+    )
 
     # Create trend sensors for user-provided entities
     trend_sensors = [
-        BetterTrendsSensor(entity_id, hass, interval_entity_id, steps_entity_id)
+        BetterTrendsSensor(entity_id, hass, interval_entity, steps_entity)
         for entity_id in user_entities
     ]
 
-    # Add all trend sensors to Home Assistant
-    async_add_entities(trend_sensors, update_before_add=True)
-
+    # Add all entities to Home Assistant
+    async_add_entities([interval_entity, steps_entity] + trend_sensors, update_before_add=True)
+    
 
 async def async_create_input_number(hass, object_id, name, min_value, max_value, initial_value):
     """Helper to create an input_number entity if it doesn't already exist."""
@@ -56,11 +64,11 @@ class TrendNumber(NumberEntity):
     def __init__(self, name, unique_id, initial_value, min_value, max_value):
         self._attr_name = name
         self._attr_unique_id = unique_id
-        self._attr_native_value = initial_value  # Use native_value instead of value
+        self._attr_native_value = initial_value
         self._attr_min_value = min_value
         self._attr_max_value = max_value
-        self._attr_step = 1
-        self._attr_mode = NumberMode.BOX  # Allow direct user input in the UI
+        self._attr_step = 1  # Adjust step size for user input
+        self._attr_mode = NumberMode.BOX  # Allow direct user input (via a text box)
 
     @property
     def native_value(self):
@@ -72,7 +80,7 @@ class TrendNumber(NumberEntity):
         self._attr_native_value = int(value)
         self.async_write_ha_state()
         _LOGGER.info(f"{self._attr_name} updated to {self._attr_native_value}")
-
+        
 
 class BetterTrendsSensor(SensorEntity):
     """A sensor to calculate trends for user-provided entities."""
