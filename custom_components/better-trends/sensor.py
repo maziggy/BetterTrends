@@ -28,15 +28,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         100,
     )
 
+    _LOGGER.debug("Adding TrendNumber entities: interval_entity and steps_entity")
+
+    # Force state update after registration
+    async_add_entities([interval_entity, steps_entity], update_before_add=True)
+
     # Create trend sensors for user-provided entities
     trend_sensors = [
         BetterTrendsSensor(entity_id, hass, interval_entity, steps_entity)
         for entity_id in user_entities
     ]
-
-    # Add all entities to Home Assistant
-    async_add_entities([interval_entity, steps_entity] + trend_sensors, update_before_add=True)
-    
+    async_add_entities(trend_sensors, update_before_add=True)
+        
 
 async def async_create_input_number(hass, object_id, name, min_value, max_value, initial_value):
     """Helper to create an input_number entity if it doesn't already exist."""
@@ -67,20 +70,27 @@ class TrendNumber(NumberEntity):
         self._attr_native_value = initial_value
         self._attr_min_value = min_value
         self._attr_max_value = max_value
-        self._attr_step = 1  # Adjust step size for user input
-        self._attr_mode = NumberMode.BOX  # Allow direct user input (via a text box)
+        self._attr_step = 1  # Step size for adjustments
+        self._attr_mode = NumberMode.BOX  # Editable field in the UI
+
+        _LOGGER.debug(
+            f"Initialized {self._attr_name} with value {self._attr_native_value}, "
+            f"min: {self._attr_min_value}, max: {self._attr_max_value}"
+        )
 
     @property
     def native_value(self):
         """Return the current value."""
+        _LOGGER.debug(f"{self._attr_name}: Getting current value {self._attr_native_value}")
         return self._attr_native_value
 
     async def async_set_native_value(self, value: float):
         """Set a new value."""
+        _LOGGER.debug(f"{self._attr_name}: Setting value to {value}")
         self._attr_native_value = int(value)
         self.async_write_ha_state()
         _LOGGER.info(f"{self._attr_name} updated to {self._attr_native_value}")
-        
+                
 
 class BetterTrendsSensor(SensorEntity):
     """A sensor to calculate trends for user-provided entities."""
