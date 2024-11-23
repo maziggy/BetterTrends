@@ -103,7 +103,8 @@ class BetterTrendsSensor(SensorEntity):
                 if state:
                     try:
                         value = float(state.state)
-                        self._add_value(value)  # Updates `current_step` dynamically
+                        _LOGGER.debug(f"Collected value: {value} for {self._entity_id}")
+                        self._add_value(value)
                     except ValueError:
                         _LOGGER.warning(f"Invalid state for {self._entity_id}: {state.state}")
                 else:
@@ -115,7 +116,7 @@ class BetterTrendsSensor(SensorEntity):
             # Sleep for the configured interval
             _LOGGER.debug(f"Sleeping for {self._interval} seconds")
             await asyncio.sleep(self._interval)
-        
+                
     def _add_value(self, value):
         """Maintain a rolling buffer and calculate trend when steps are reached."""
         self._values.append(value)
@@ -127,16 +128,15 @@ class BetterTrendsSensor(SensorEntity):
         # Log the updated buffer and its size
         _LOGGER.debug(f"Buffer: {self._values} (size: {len(self._values)})")
 
-        # Update the current step entity dynamically
+        # Dynamically update the current step
         current_step = len(self._values)
-        self.hass.states.async_set(self._current_step_entity, current_step, {})
-        _LOGGER.debug(f"Updated current step dynamically: {current_step}")
 
-        # Calculate trend if buffer size reaches the step count
-        if len(self._values) == self._steps:
-            self._state = self._calculate_trend()
-            _LOGGER.debug(f"Trend calculated: {self._state}")
-                
+        # Prevent external or unexpected resets
+        existing_state = self.hass.states.get(self._current_step_entity)
+        if existing_state and int(existing_state.state) != current_step:
+            _LOGGER.debug(f"Updating current step dynamically to: {current_step}")
+            self.hass.states.async_set(self._current_step_entity, current_step, {})
+                        
     def _calculate_trend(self):
         """Calculate the trend based on the rolling buffer."""
         if not self._values:
