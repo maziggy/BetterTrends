@@ -2,32 +2,42 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from .const import DOMAIN, DEFAULT_INTERVAL, DEFAULT_TREND_VALUES
-import asyncio
 import logging
 
 _LOGGER = logging.getLogger(__name__)
 
-# Platform setup function
+ADDED_ENTITIES = set()  # Track added entities to avoid duplicates
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     """Set up BetterTrends sensors from a config entry."""
-    user_entities = entry.data["entities"]  # Get user-configured entities
-    interval = DEFAULT_INTERVAL  # Default collection interval
-    trend_values = DEFAULT_TREND_VALUES  # Default number of steps for trend calculation
+    user_entities = entry.data["entities"]
+    interval = DEFAULT_INTERVAL
+    trend_values = DEFAULT_TREND_VALUES
 
-    # Create sensors for the user-defined entities
-    trend_sensors = [
-        BetterTrendsSensor(entity_id, trend_values, interval) for entity_id in user_entities
-    ]
+    # Add user-configured sensors
+    new_sensors = []
+    for entity_id in user_entities:
+        if entity_id not in ADDED_ENTITIES:
+            ADDED_ENTITIES.add(entity_id)
+            new_sensors.append(BetterTrendsSensor(entity_id, trend_values, interval))
 
-    # Add static sensors for interval and steps
-    trend_sensors.append(TrendIntervalSensor(interval))
-    trend_sensors.append(TrendStepsSensor(trend_values))
+    # Add static interval and step sensors if not already added
+    if "sensor.trend_sensor_interval" not in ADDED_ENTITIES:
+        ADDED_ENTITIES.add("sensor.trend_sensor_interval")
+        new_sensors.append(TrendIntervalSensor(interval))
 
-    # Add all the sensors to Home Assistant
-    async_add_entities(trend_sensors, update_before_add=True)
+    if "sensor.trend_sensor_steps" not in ADDED_ENTITIES:
+        ADDED_ENTITIES.add("sensor.trend_sensor_steps")
+        new_sensors.append(TrendStepsSensor(trend_values))
+
+    # Add the new sensors
+    if new_sensors:
+        async_add_entities(new_sensors, update_before_add=True)
+    else:
+        _LOGGER.info("No new entities to add for BetterTrends.")
 
 
-# Define the BetterTrendsSensor class for trend calculation
 class BetterTrendsSensor(SensorEntity):
     """A sensor to calculate trends for user-provided entities."""
 
@@ -96,7 +106,6 @@ class BetterTrendsSensor(SensorEntity):
         return round(total / self._trend_values, 1)
 
 
-# Define the static TrendIntervalSensor class
 class TrendIntervalSensor(SensorEntity):
     """A sensor to represent the trend interval."""
 
@@ -111,7 +120,6 @@ class TrendIntervalSensor(SensorEntity):
         return self._state
 
 
-# Define the static TrendStepsSensor class
 class TrendStepsSensor(SensorEntity):
     """A sensor to represent the number of trend steps."""
 
