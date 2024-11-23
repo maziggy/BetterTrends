@@ -52,17 +52,18 @@ class BetterTrendsSensor(SensorEntity):
                 interval_state = self.hass.states.get(self._interval_entity)
                 interval = int(interval_state.state) if interval_state and interval_state.state.isdigit() else 60
 
+                # Fetch steps from the number entity
+                steps_state = self.hass.states.get(self._steps_entity)
+                steps = int(steps_state.state) if steps_state and steps_state.state.isdigit() else 10
+
                 state = self.hass.states.get(self._entity_id)
                 if state:
                     try:
                         value = float(state.state)
-                        self._handle_new_value(value)
+                        self._add_value(value, steps)
 
                         # Update the current step entity dynamically
-                        steps_state = self.hass.states.get(self._steps_entity)
-                        steps = int(steps_state.state) if steps_state and steps_state.state.isdigit() else 10
-                        current_step = min(len(self._values), steps)
-
+                        current_step = len(self._values)
                         self.hass.states.async_set(current_step_entity, current_step, {})
                     except ValueError:
                         _LOGGER.warning(f"Invalid state for {self._entity_id}: {state.state}")
@@ -76,7 +77,7 @@ class BetterTrendsSensor(SensorEntity):
 
             self.async_write_ha_state()
             await asyncio.sleep(interval)
-                        
+                                    
     def _handle_new_value(self, value):
         """Handle a new value and calculate the trend."""
         if not self._values:
@@ -85,16 +86,15 @@ class BetterTrendsSensor(SensorEntity):
             self._add_value(value)
             self._state = self._calculate_trend()
 
-    def _add_value(self, value):
-        """Maintain a fixed-length buffer."""
-        # Fetch steps from the number entity
-        steps_state = self.hass.states.get(self._steps_entity)
-        steps = int(steps_state.state) if steps_state and steps_state.state.isdigit() else 10
-
-        if len(self._values) >= steps:
-            self._values.pop(0)
+    def _add_value(self, value, steps):
+        """Maintain a fixed-length buffer and calculate trend when steps are reached."""
         self._values.append(value)
 
+        # Check if we have enough values to calculate the trend
+        if len(self._values) >= steps:
+            self._state = self._calculate_trend()
+            self._values = []  # Reset the buffer after trend calculation
+            
     def _calculate_trend(self):
         """Calculate the trend based on the rolling buffer."""
         total = sum(self._values)
