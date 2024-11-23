@@ -9,15 +9,23 @@ import asyncio
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
-    """Set up BetterTrends sensors from a config entry."""
+    """Set up BetterTrends sensors and input numbers from a config entry."""
     user_entities = entry.data.get("entities", [])
 
-    # Create number entities for interval and steps
+    # Create number entities for interval and steps as input_number equivalents
     interval_entity = TrendNumber(
-        "Trend Sensor Interval", "trend_sensor_interval", DEFAULT_INTERVAL, 1, 3600
+        "Trend Sensor Interval", 
+        "input_number.trend_sensor_interval",  # Updated to follow input_number format
+        DEFAULT_INTERVAL, 
+        1, 
+        3600
     )
     steps_entity = TrendNumber(
-        "Trend Sensor Steps", "trend_sensor_steps", DEFAULT_TREND_VALUES, 1, 100
+        "Trend Sensor Steps", 
+        "input_number.trend_sensor_steps",  # Updated to follow input_number format
+        DEFAULT_TREND_VALUES, 
+        1, 
+        100
     )
 
     # Create trend sensors for user-provided entities
@@ -28,7 +36,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     # Add all entities to Home Assistant
     async_add_entities([interval_entity, steps_entity] + trend_sensors, update_before_add=True)
-
+    
 
 class TrendNumber(NumberEntity):
     """A numeric entity representing a configurable value."""
