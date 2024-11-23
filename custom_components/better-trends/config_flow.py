@@ -23,7 +23,7 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self.entities = existing_entries[0].data.get("entities", [])
 
         if user_input is not None:
-            # Dynamic labeling for the entity field based on the number of entities entered
+            # Get the new entity based on the dynamic key
             new_entity_key = f"entity_{len(self.entities)}"
             new_entity = user_input.get(new_entity_key, "")
 
@@ -36,18 +36,18 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 # If the field is empty, finalize the configuration
                 if self.entities:
-                    # Check if an existing entry already exists
+                    # Merge with existing entries
                     existing_entries = [
                         entry for entry in self.hass.config_entries.async_entries(DOMAIN)
                     ]
                     if existing_entries:
                         entry = existing_entries[0]
 
-                        # Create a new data dictionary with updated entities
+                        # Merge new entities with existing ones
                         updated_entities = list(set(entry.data["entities"] + self.entities))
                         new_data = {**entry.data, "entities": updated_entities}
 
-                        # Use `async_update_entry` to update the config entry
+                        # Update the entry with merged data
                         self.hass.config_entries.async_update_entry(entry, data=new_data)
 
                         # Reload the entry to apply changes
