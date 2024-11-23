@@ -7,7 +7,7 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
-
+# Platform setup function
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     """Set up BetterTrends sensors from a config entry."""
     user_entities = entry.data["entities"]  # Get user-configured entities
@@ -27,6 +27,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities(trend_sensors, update_before_add=True)
 
 
+# Define the BetterTrendsSensor class for trend calculation
 class BetterTrendsSensor(SensorEntity):
     """A sensor to calculate trends for user-provided entities."""
 
@@ -95,6 +96,7 @@ class BetterTrendsSensor(SensorEntity):
         return round(total / self._trend_values, 1)
 
 
+# Define the static TrendIntervalSensor class
 class TrendIntervalSensor(SensorEntity):
     """A sensor to represent the trend interval."""
 
@@ -109,6 +111,7 @@ class TrendIntervalSensor(SensorEntity):
         return self._state
 
 
+# Define the static TrendStepsSensor class
 class TrendStepsSensor(SensorEntity):
     """A sensor to represent the number of trend steps."""
 
