@@ -7,12 +7,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up BetterTrends from a config entry."""
     hass.data.setdefault(DOMAIN, {})
     
-    # Forward entry setups for both sensor and number domains
+    # Forward entry setup for sensor and number domains
     await hass.config_entries.async_forward_entry_setup(entry, "sensor")
     await hass.config_entries.async_forward_entry_setup(entry, "number")
 
     return True
-    
+        
                 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
