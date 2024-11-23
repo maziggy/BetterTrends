@@ -23,11 +23,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         1,
         100,
     )
+    current_step_entity = TrendNumber(
+        "Trend Sensor Current Step",
+        f"{entry.entry_id}_trend_sensor_current_step",
+        DEFAULT_TREND_VALUES,
+        1,
+        100,
+    )
 
-    _LOGGER.debug("Adding TrendNumber entities: interval_entity and steps_entity")
+    _LOGGER.debug("Adding TrendNumber entities: interval_entity, steps_entity and current_step_entity.")
 
     # Add entities to Home Assistant
-    async_add_entities([interval_entity, steps_entity], update_before_add=True)
+    async_add_entities([interval_entity, steps_entity, current_steps], update_before_add=True)
 
 
 class TrendNumber(NumberEntity):

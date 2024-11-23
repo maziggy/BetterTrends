@@ -30,6 +30,8 @@ class BetterTrendsSensor(SensorEntity):
         self._state = None
         self._attr_name = f"Trend {entity_id}"
         self._attr_unique_id = f"better_trends_{entity_id}"
+        self._interval_entity = "number.trend_sensor_interval"
+        self._steps_entity = "number.trend_sensor_steps"
 
     @property
     def native_value(self):
@@ -42,13 +44,22 @@ class BetterTrendsSensor(SensorEntity):
 
     async def _collect_data(self):
         """Collect entity state at regular intervals and calculate the trend."""
+        current_step_entity = "number.current_step_entity"  # Replace with your actual entity ID
+
         while True:
             try:
+                # Fetch interval from the number entity
+                interval_state = self.hass.states.get(self._interval_entity)
+                interval = int(interval_state.state) if interval_state and interval_state.state.isdigit() else 60
+
                 state = self.hass.states.get(self._entity_id)
                 if state:
                     try:
                         value = float(state.state)
                         self._handle_new_value(value)
+
+                        # Update the current step entity with the latest value
+                        self.hass.states.async_set(current_step_entity, value, {})
                     except ValueError:
                         _LOGGER.warning(f"Invalid state for {self._entity_id}: {state.state}")
                         self._state = None
@@ -60,8 +71,8 @@ class BetterTrendsSensor(SensorEntity):
                 self._state = None
 
             self.async_write_ha_state()
-            await asyncio.sleep(60)  # Default interval for data collection
-
+            await asyncio.sleep(interval)
+            
     def _handle_new_value(self, value):
         """Handle a new value and calculate the trend."""
         if not self._values:
@@ -72,7 +83,11 @@ class BetterTrendsSensor(SensorEntity):
 
     def _add_value(self, value):
         """Maintain a fixed-length buffer."""
-        if len(self._values) >= 10:  # Default steps
+        # Fetch steps from the number entity
+        steps_state = self.hass.states.get(self._steps_entity)
+        steps = int(steps_state.state) if steps_state and steps_state.state.isdigit() else 10
+
+        if len(self._values) >= steps:
             self._values.pop(0)
         self._values.append(value)
 
