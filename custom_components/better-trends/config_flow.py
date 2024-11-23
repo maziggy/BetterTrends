@@ -1,28 +1,57 @@
 from homeassistant import config_entries
+from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from .const import DOMAIN
-
-# Example schema for configuration input
-CONFIG_SCHEMA = vol.Schema(
-    {
-        vol.Optional("entities", default=[]): cv.multi_select(["sensor.example_1", "sensor.example_2"]),
-        vol.Optional("trend_values", default=5): vol.Coerce(int),
-        vol.Optional("interval", default=60): vol.Coerce(int),
-    }
-)
+from .const import DOMAIN, DEFAULT_INTERVAL, DEFAULT_TREND_VALUES
 
 class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for BetterTrends."""
 
     VERSION = 1
 
-    async def async_step_user(self, user_input=None):
-        """Handle the initial step."""
-        if user_input is not None:
-            return self.async_create_entry(title="BetterTrends", data=user_input)
+    def __init__(self):
+        self.entities = []  # Store entities dynamically as the user adds them
 
+    async def async_step_user(self, user_input=None):
+        """Handle the initial step of the config flow."""
+        errors = {}
+
+        if user_input is not None:
+            new_entity = user_input.get("new_entity")
+
+            # If the user didn't leave the field empty
+            if new_entity:
+                # Validate the entity
+                if new_entity in self.hass.states.async_entity_ids("sensor"):
+                    self.entities.append(new_entity)
+                else:
+                    errors["new_entity"] = "invalid_entity"
+            else:
+                # Finish if the user left the field empty
+                if self.entities:
+                    return self.async_create_entry(
+                        title="BetterTrends",
+                        data={
+                            "entities": self.entities,
+                            "trend_values": user_input.get("trend_values"),
+                            "interval": user_input.get("interval"),
+                        },
+                    )
+                else:
+                    errors["new_entity"] = "no_entities"
+
+        # Create the form schema
+        schema = vol.Schema(
+            {
+                vol.Optional("new_entity"): str,
+                vol.Required("trend_values", default=DEFAULT_TREND_VALUES): vol.Coerce(int),
+                vol.Required("interval", default=DEFAULT_INTERVAL): vol.Coerce(int),
+            }
+        )
+
+        # Display the form
         return self.async_show_form(
             step_id="user",
-            data_schema=CONFIG_SCHEMA
+            data_schema=schema,
+            errors=errors,
         )
