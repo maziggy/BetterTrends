@@ -2,6 +2,7 @@ from homeassistant.helpers.event import async_track_state_change
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from threading import Lock
 from .const import DOMAIN
 import logging
 import asyncio
@@ -100,6 +101,13 @@ class BetterTrendsSensor(SensorEntity):
         while True:
             try:
                 _LOGGER.debug(f"Collecting data for {self._entity_id}")
+
+                # Retry fetching missing entities
+                if not self.hass.states.get(self._interval_entity) or not self.hass.states.get(self._steps_entity):
+                    _LOGGER.warning("Number entities missing. Retrying...")
+                    await asyncio.sleep(5)  # Wait before retrying
+                    continue
+
                 self._update_interval_and_steps()
 
                 state = self.hass.states.get(self._entity_id)
@@ -107,7 +115,7 @@ class BetterTrendsSensor(SensorEntity):
                     try:
                         value = float(state.state)
                         _LOGGER.debug(f"Collected value: {value} for {self._entity_id}")
-                        self._add_value(value)
+                        await self._add_value(value)  # Await the call to _add_value
                     except ValueError:
                         _LOGGER.warning(f"Invalid state for {self._entity_id}: {state.state}")
                 else:
@@ -119,10 +127,10 @@ class BetterTrendsSensor(SensorEntity):
             # Sleep for the configured interval
             _LOGGER.debug(f"Sleeping for {self._interval} seconds")
             await asyncio.sleep(self._interval)
-                
-    async def _add_value(self, value):
+                        
+    def _add_value(self, value):
         """Thread-safe buffer update."""
-        async with self._lock:
+        with self._lock:  # Use synchronous lock
             self._values.append(value)
 
             # Ensure buffer size does not exceed steps
@@ -136,7 +144,7 @@ class BetterTrendsSensor(SensorEntity):
             existing_state = self.hass.states.get(self._current_step_entity)
             if existing_state and int(existing_state.state) != current_step:
                 self.hass.states.async_set(self._current_step_entity, current_step, {})
-                                        
+                                                        
     def _calculate_trend(self):
         """Calculate the trend based on the rolling buffer."""
         if not self._values:
