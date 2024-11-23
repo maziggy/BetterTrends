@@ -25,19 +25,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 async def _ensure_input_number(hass, entity_id, name, min_value, max_value, initial_value):
     """Ensure an input_number entity exists."""
     if not hass.states.get(entity_id):
-        _LOGGER.info(f"Creating {entity_id} as input_number.")
-        await hass.services.async_call(
-            "input_number",
-            "create",
-            {
-                "entity_id": entity_id,
-                "name": name,
-                "min": min_value,
-                "max": max_value,
-                "step": 1,
-                "initial": initial_value,
-            },
-        )
+        try:
+            _LOGGER.info(f"Creating {entity_id} as input_number.")
+            await hass.services.async_call(
+                "input_number",
+                "create",
+                {
+                    "entity_id": entity_id,
+                    "name": name,
+                    "min": min_value,
+                    "max": max_value,
+                    "step": 1,
+                    "initial": initial_value,
+                },
+            )
+        except Exception as e:
+            _LOGGER.error(f"Failed to create {entity_id}: {e}")
 
 
 class BetterTrendsSensor(SensorEntity):
