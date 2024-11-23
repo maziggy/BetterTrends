@@ -15,22 +15,23 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
+            # Dynamic labeling for the entity field based on the number of entities entered
             if len(self.entities) < 2:
-                new_entity = user_input.get(
-                    f"entity_{len(self.entities)}", ""
-                )
+                new_entity = user_input.get(f"entity_{len(self.entities)}", "")
             else:
-                new_entity = user_input.get(
-                    f"entity_{len(self.entities)} or leave blank to finish setup.", ""
-                )
-            )
+                new_entity = user_input.get(f"entity_{len(self.entities)} or leave blank to finish setup.", "")
 
+            # Process the input
             if new_entity:
                 # Validate the entered entity
                 if new_entity in self.hass.states.async_entity_ids("sensor"):
                     self.entities.append(new_entity)  # Add to the list of valid entities
                 else:
-                    errors[f"entity_{len(self.entities)} or leave blank to finish setup."] = "invalid_entity"
+                    # Add an error for the current entity field
+                    if len(self.entities) < 2:
+                        errors[f"entity_{len(self.entities)}"] = "invalid_entity"
+                    else:
+                        errors[f"entity_{len(self.entities)} or leave blank to finish setup."] = "invalid_entity"
             else:
                 # If the field is empty, finalize the configuration
                 if self.entities:
@@ -39,7 +40,11 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         data={"entities": self.entities},
                     )
                 else:
-                    errors[f"entity_{len(self.entities)} or leave blank to finish setup."] = "no_entities"
+                    # Show an error if no entities have been added
+                    if len(self.entities) < 2:
+                        errors[f"entity_{len(self.entities)}"] = "no_entities"
+                    else:
+                        errors[f"entity_{len(self.entities)} or leave blank to finish setup."] = "no_entities"
 
         # Build the form schema dynamically
         schema = self._build_schema()
@@ -59,8 +64,10 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         for i, entity in enumerate(self.entities):
             schema[vol.Optional(f"entity_{i}", default=entity)] = str
 
-        # Add a new empty field for the next entity
-        schema[vol.Optional(f"entity_{len(self.entities)} or leave blank to finish setup.")] = str
+        # Add a new field for the next entity
+        if len(self.entities) < 2:
+            schema[vol.Optional(f"entity_{len(self.entities)}")] = str
+        else:
+            schema[vol.Optional(f"entity_{len(self.entities)} or leave blank to finish setup.")] = str
 
         return vol.Schema(schema)
-        
