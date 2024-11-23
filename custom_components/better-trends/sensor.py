@@ -1,4 +1,4 @@
-from homeassistant.components.number import NumberEntity
+from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -13,12 +13,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     user_entities = entry.data.get("entities", [])
 
     # Create number entities for interval and steps
-    interval_entity = TrendNumber("Trend Sensor Interval", "trend_sensor_interval", DEFAULT_INTERVAL, 1, 3600)
-    steps_entity = TrendNumber("Trend Sensor Steps", "trend_sensor_steps", DEFAULT_TREND_VALUES, 1, 100)
+    interval_entity = TrendNumber(
+        "Trend Sensor Interval", "trend_sensor_interval", DEFAULT_INTERVAL, 1, 3600
+    )
+    steps_entity = TrendNumber(
+        "Trend Sensor Steps", "trend_sensor_steps", DEFAULT_TREND_VALUES, 1, 100
+    )
 
     # Create trend sensors for user-provided entities
     trend_sensors = [
-        BetterTrendsSensor(entity_id, hass, interval_entity, steps_entity) for entity_id in user_entities
+        BetterTrendsSensor(entity_id, hass, interval_entity, steps_entity)
+        for entity_id in user_entities
     ]
 
     # Add all entities to Home Assistant
@@ -35,6 +40,7 @@ class TrendNumber(NumberEntity):
         self._attr_min_value = min_value
         self._attr_max_value = max_value
         self._attr_step = 1
+        self._attr_mode = NumberMode.BOX  # Allow direct user input in the UI
 
     @property
     def value(self):
