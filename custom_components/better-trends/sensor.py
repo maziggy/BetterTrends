@@ -1,7 +1,7 @@
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.const import EVENT_STATE_CHANGED
-from homeassistant.core import HomeAssistant, callback
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.const import EVENT_STATE_CHANGED
 from .const import DOMAIN, DEFAULT_INTERVAL, DEFAULT_TREND_VALUES
 import logging
 import asyncio
@@ -13,18 +13,18 @@ ADDED_ENTITIES = set()  # Track added entities to avoid duplicates
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     """Set up BetterTrends sensors from a config entry."""
-    user_entities = entry.data["entities"]  # Get user-configured entities
+    user_entities = entry.data.get("entities", [])  # Get all configured entities
     interval = DEFAULT_INTERVAL
     trend_values = DEFAULT_TREND_VALUES
 
-    # Create sensors for user-defined entities, avoiding duplicates
+    # Add sensors for all user-defined entities, preserving existing ones
     new_sensors = []
     for entity_id in user_entities:
         if entity_id not in ADDED_ENTITIES:
             ADDED_ENTITIES.add(entity_id)
             new_sensors.append(BetterTrendsSensor(entity_id, trend_values, interval, hass))
 
-    # Add dynamic sensors for interval and steps, avoiding duplicates
+    # Add editable interval and step sensors, ensuring they're added only once
     if "sensor.trend_sensor_interval" not in ADDED_ENTITIES:
         ADDED_ENTITIES.add("sensor.trend_sensor_interval")
         new_sensors.append(EditableIntervalSensor(interval, hass, entry))
@@ -33,7 +33,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         ADDED_ENTITIES.add("sensor.trend_sensor_steps")
         new_sensors.append(EditableStepsSensor(trend_values, hass, entry))
 
-    # Add the new sensors to Home Assistant
+    # Add all the new sensors to Home Assistant
     if new_sensors:
         async_add_entities(new_sensors, update_before_add=True)
     else:
@@ -129,17 +129,18 @@ class EditableIntervalSensor(SensorEntity):
 
     async def async_added_to_hass(self):
         """Listen for changes to the `input_number.trend_interval`."""
-        @callback
-        def update_state(event):
-            new_state = event.data.get("new_state")
-            if new_state and new_state.state.isdigit():
-                self._state = int(float(new_state.state))
-                self.async_write_ha_state()
-
         self.hass.bus.async_listen(
             EVENT_STATE_CHANGED,
-            update_state,
+            self._handle_state_change,
         )
+
+    @callback
+    def _handle_state_change(self, event):
+        """Update the interval when the `input_number.trend_interval` changes."""
+        new_state = event.data.get("new_state")
+        if new_state and new_state.state.isdigit():
+            self._state = int(float(new_state.state))
+            self.async_write_ha_state()
 
 
 class EditableStepsSensor(SensorEntity):
@@ -159,14 +160,15 @@ class EditableStepsSensor(SensorEntity):
 
     async def async_added_to_hass(self):
         """Listen for changes to the `input_number.trend_steps`."""
-        @callback
-        def update_state(event):
-            new_state = event.data.get("new_state")
-            if new_state and new_state.state.isdigit():
-                self._state = int(float(new_state.state))
-                self.async_write_ha_state()
-
         self.hass.bus.async_listen(
             EVENT_STATE_CHANGED,
-            update_state,
+            self._handle_state_change,
         )
+
+    @callback
+    def _handle_state_change(self, event):
+        """Update the steps when the `input_number.trend_steps` changes."""
+        new_state = event.data.get("new_state")
+        if new_state and new_state.state.isdigit():
+            self._state = int(float(new_state.state))
+            self.async_write_ha_state()
