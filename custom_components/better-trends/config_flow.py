@@ -35,16 +35,30 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 # If the field is empty, finalize the configuration
                 if self.entities:
-                    return self.async_create_entry(
-                        title="BetterTrends",
-                        data={"entities": self.entities},
-                    )
-                else:
-                    # Show an error if no entities have been added
-                    if len(self.entities) < 2:
-                        errors[f"entity_{len(self.entities)}"] = "no_entities"
+                    # Check if an existing entry already exists
+                    existing_entries = [
+                        entry for entry in self.hass.config_entries.async_entries(DOMAIN)
+                    ]
+                    if existing_entries:
+                        entry = existing_entries[0]
+                        updated_entities = list(set(entry.data["entities"] + self.entities))
+                        entry.data["entities"] = updated_entities
+
+                        # Reload the entry to apply changes
+                        await self.hass.config_entries.async_reload(entry.entry_id)
+                        return self.async_abort(reason="reconfigure_successful")
                     else:
-                        errors[f"entity_{len(self.entities)} or leave blank to finish setup."] = "no_entities"
+                        # Create a new entry if none exists
+                        return self.async_create_entry(
+                            title="BetterTrends",
+                            data={"entities": self.entities},
+                        )
+
+                # Show an error if no entities have been added
+                if len(self.entities) < 2:
+                    errors[f"entity_{len(self.entities)}"] = "no_entities"
+                else:
+                    errors[f"entity_{len(self.entities)} or leave blank to finish setup."] = "no_entities"
 
         # Build the form schema dynamically
         schema = self._build_schema()
