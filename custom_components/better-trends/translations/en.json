@@ -1,0 +1,28 @@
+{
+  "title": "BetterTrends",
+  "config": {
+    "step": {
+      "user": {
+        "title": "BetterTrends Configuration",
+        "description": "Configure the BetterTrends integration.",
+        "data": {
+          "entities": "Entities for trend calculation",
+          "trend_values": "Number of trend values to use",
+          "interval": "Update interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "invalid_entity": "Invalid entity specified",
+      "missing_values": "Trend values must be greater than 0"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "BetterTrends Options",
+        "description": "Update the configuration for BetterTrends."
+      }
+    }
+  }
+}
