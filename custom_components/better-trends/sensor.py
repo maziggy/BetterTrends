@@ -120,26 +120,23 @@ class BetterTrendsSensor(SensorEntity):
             _LOGGER.debug(f"Sleeping for {self._interval} seconds")
             await asyncio.sleep(self._interval)
                 
-    def _add_value(self, value):
-        """Maintain a rolling buffer and calculate trend when steps are reached."""
-        self._values.append(value)
+    async def _add_value(self, value):
+        """Thread-safe buffer update."""
+        async with self._lock:
+            self._values.append(value)
 
-        # Ensure the buffer size does not exceed the step count
-        if len(self._values) > self._steps:
-            self._values.pop(0)  # Remove the oldest value
+            # Ensure buffer size does not exceed steps
+            while len(self._values) > self._steps:
+                self._values.pop(0)
 
-        # Log the updated buffer and its size
-        _LOGGER.debug(f"Buffer: {self._values} (size: {len(self._values)})")
+            _LOGGER.debug(f"Buffer: {self._values} (size: {len(self._values)})")
 
-        # Dynamically update the current step
-        current_step = len(self._values)
-
-        # Prevent external or unexpected resets
-        existing_state = self.hass.states.get(self._current_step_entity)
-        if existing_state and int(existing_state.state) != current_step:
-            _LOGGER.debug(f"Updating current step dynamically to: {current_step}")
-            self.hass.states.async_set(self._current_step_entity, current_step, {})
-                        
+            # Update current step
+            current_step = len(self._values)
+            existing_state = self.hass.states.get(self._current_step_entity)
+            if existing_state and int(existing_state.state) != current_step:
+                self.hass.states.async_set(self._current_step_entity, current_step, {})
+                                        
     def _calculate_trend(self):
         """Calculate the trend based on the rolling buffer."""
         if not self._values:
