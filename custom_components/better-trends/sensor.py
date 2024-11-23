@@ -7,6 +7,7 @@ import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     """Set up BetterTrends sensors from a config entry."""
     user_entities = entry.data.get("entities", [])
