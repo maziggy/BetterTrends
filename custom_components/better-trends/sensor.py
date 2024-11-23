@@ -29,17 +29,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         100,
     )
 
-    _LOGGER.debug("Adding TrendNumber entities: interval_entity and steps_entity")
+    # Add these number entities to the "number" domain
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN]["numbers"] = [interval_entity, steps_entity]
 
-    # Add interval and step entities to Home Assistant
-    async_add_entities([interval_entity, steps_entity], update_before_add=True)
-
-    # Create trend sensors for user-provided entities
+    # Add trend sensors for user-provided entities
     trend_sensors = [
         BetterTrendsSensor(entity_id, hass, interval_entity, steps_entity)
         for entity_id in user_entities
     ]
+
+    # Register entities
     async_add_entities(trend_sensors, update_before_add=True)
+
+    # Register number entities directly in the "number" domain
+    platform = hass.helpers.entity_platform.async_get_current_platform()
+    platform.async_register_entity_service("number", [interval_entity, steps_entity])
 
 
 class TrendNumber(NumberEntity):
