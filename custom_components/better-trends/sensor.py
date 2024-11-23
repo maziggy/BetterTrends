@@ -42,23 +42,23 @@ class BetterTrendsSensor(SensorEntity):
         return self._state
 
     async def async_added_to_hass(self):
-        """Start periodic data collection and initialize default states."""
-        # Wait for number entities before initializing
+        """Ensure number entities are initialized before starting."""
         for _ in range(10):  # Retry for up to 10 seconds
-            if self.hass.states.get(self._interval_entity) and self.hass.states.get(self._steps_entity):
-                _LOGGER.info(f"Number entities found: {self._interval_entity}, {self._steps_entity}")
-                break
-            _LOGGER.warning(f"Waiting for {self._interval_entity} and {self._steps_entity} to become available...")
-            await asyncio.sleep(1)
+            interval_state = self.hass.states.get(self._interval_entity)
+            steps_state = self.hass.states.get(self._steps_entity)
 
-        # Log error if entities are still missing after retries
-        if not self.hass.states.get(self._interval_entity) or not self.hass.states.get(self._steps_entity):
-            _LOGGER.error(f"Number entities {self._interval_entity} and {self._steps_entity} not found after retries")
-            return  # Exit to prevent further errors
+            if interval_state and steps_state:
+                _LOGGER.info("Number entities are available")
+                break
+
+            _LOGGER.warning(
+                f"Waiting for {self._interval_entity} and {self._steps_entity} to become available..."
+            )
+            await asyncio.sleep(1)
 
         self._update_interval_and_steps()
         self.hass.loop.create_task(self._collect_data())
-
+    
     async def async_will_remove_from_hass(self):
         """Clean up state listeners when the entity is removed."""
         for unsub in self._unsub_listeners:
@@ -71,8 +71,6 @@ class BetterTrendsSensor(SensorEntity):
 
         interval_state = self.hass.states.get(self._interval_entity)
         steps_state = self.hass.states.get(self._steps_entity)
-
-        _LOGGER.info(f"Fetched interval_state: {interval_state}, steps_state: {steps_state}")
 
         if interval_state and interval_state.state.isdigit():
             self._interval = int(interval_state.state)
@@ -91,7 +89,7 @@ class BetterTrendsSensor(SensorEntity):
             self._steps = 10
 
         _LOGGER.info(f"Updated interval to {self._interval} seconds and steps to {self._steps}")
-
+    
     async def _collect_data(self):
         """Collect entity state at regular intervals and calculate the trend."""
         while True:
