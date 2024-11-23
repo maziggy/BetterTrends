@@ -8,6 +8,9 @@ import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
+_LOGGER = logging.getLogger(__name__)
+_LOGGER.info("BetterTrends sensor.py loaded. Verifying callback import.")
+
 ADDED_ENTITIES = set()  # Track added entities to avoid duplicates
 
 
