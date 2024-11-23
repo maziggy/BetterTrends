@@ -41,12 +41,12 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     ]
                     if existing_entries:
                         entry = existing_entries[0]
-                        updated_entities = list(set(entry.data["entities"] + self.entities))
 
-                        # Create a new dictionary with the updated entities
+                        # Create a new data dictionary with updated entities
+                        updated_entities = list(set(entry.data["entities"] + self.entities))
                         new_data = {**entry.data, "entities": updated_entities}
 
-                        # Update the entry with the new data
+                        # Use `async_update_entry` to update the config entry
                         self.hass.config_entries.async_update_entry(entry, data=new_data)
 
                         # Reload the entry to apply changes
