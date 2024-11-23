@@ -8,6 +8,26 @@ import logging
 _LOGGER = logging.getLogger(__name__)
 
 
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
+    """Set up BetterTrends sensors."""
+    # Get user-provided entities and default values
+    user_entities = entry.data["entities"]
+    interval = DEFAULT_INTERVAL
+    trend_values = DEFAULT_TREND_VALUES
+
+    # Create sensors for user-provided entities with trend calculation
+    trend_sensors = [
+        BetterTrendsSensor(entity_id, trend_values, interval) for entity_id in user_entities
+    ]
+
+    # Add the additional auto-created sensors
+    trend_sensors.append(TrendIntervalSensor(interval))
+    trend_sensors.append(TrendStepsSensor(trend_values))
+
+    # Add all sensors
+    async_add_entities(trend_sensors, update_before_add=True)
+
+
 class BetterTrendsSensor(SensorEntity):
     """A sensor to calculate trends for user-provided entities."""
 
@@ -86,3 +106,31 @@ class BetterTrendsSensor(SensorEntity):
         trend = round(total / self._trend_values, 1)
         _LOGGER.debug(f"Calculated trend for {self._entity_id}: {trend}")
         return trend
+
+
+class TrendIntervalSensor(SensorEntity):
+    """A sensor to represent the trend interval."""
+
+    def __init__(self, default_interval):
+        self._attr_name = "Trend Sensor Interval"
+        self._attr_unique_id = "trend_sensor_interval"
+        self._state = default_interval
+
+    @property
+    def native_value(self):
+        """Return the current interval value."""
+        return self._state
+
+
+class TrendStepsSensor(SensorEntity):
+    """A sensor to represent the number of trend steps."""
+
+    def __init__(self, default_steps):
+        self._attr_name = "Trend Sensor Steps"
+        self._attr_unique_id = "trend_sensor_steps"
+        self._state = default_steps
+
+    @property
+    def native_value(self):
+        """Return the current trend steps value."""
+        return self._state
