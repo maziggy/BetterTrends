@@ -106,7 +106,7 @@ class EditableIntervalSensor(SensorEntity):
     """A sensor representing the editable interval."""
 
     def __init__(self, interval, hass, entry):
-        self._state = interval
+        self._state = interval  # Set initial state to the default value from const.py
         self.hass = hass
         self._entry = entry
         self._attr_name = "Trend Sensor Interval"
@@ -118,26 +118,16 @@ class EditableIntervalSensor(SensorEntity):
         return self._state
 
     async def async_added_to_hass(self):
-        """Listen for changes to the `input_number.trend_interval`."""
-        self.hass.bus.async_listen(
-            EVENT_STATE_CHANGED,
-            self._handle_state_change,
-        )
-
-    @callback
-    def _handle_state_change(self, event):
-        """Update the interval when the `input_number.trend_interval` changes."""
-        new_state = event.data.get("new_state")
-        if new_state and new_state.state.isdigit():
-            self._state = int(float(new_state.state))
-            self.async_write_ha_state()
+        """Ensure the interval is initialized correctly."""
+        _LOGGER.info(f"Initializing Trend Sensor Interval with default: {self._state}")
+        self.async_write_ha_state()
 
 
 class EditableStepsSensor(SensorEntity):
     """A sensor representing the editable steps."""
 
     def __init__(self, steps, hass, entry):
-        self._state = steps
+        self._state = steps  # Set initial state to the default value from const.py
         self.hass = hass
         self._entry = entry
         self._attr_name = "Trend Sensor Steps"
@@ -149,16 +139,6 @@ class EditableStepsSensor(SensorEntity):
         return self._state
 
     async def async_added_to_hass(self):
-        """Listen for changes to the `input_number.trend_steps`."""
-        self.hass.bus.async_listen(
-            EVENT_STATE_CHANGED,
-            self._handle_state_change,
-        )
-
-    @callback
-    def _handle_state_change(self, event):
-        """Update the steps when the `input_number.trend_steps` changes."""
-        new_state = event.data.get("new_state")
-        if new_state and new_state.state.isdigit():
-            self._state = int(float(new_state.state))
-            self.async_write_ha_state()
+        """Ensure the steps are initialized correctly."""
+        _LOGGER.info(f"Initializing Trend Sensor Steps with default: {self._state}")
+        self.async_write_ha_state()
