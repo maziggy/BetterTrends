@@ -8,36 +8,27 @@ import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
-    """Set up BetterTrends sensors and numbers from a config entry."""
-    user_entities = entry.data.get("entities", [])
+    async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
+        """Set up BetterTrends sensors from a config entry."""
+        user_entities = entry.data.get("entities", [])
 
-    # Create numeric entities for interval and steps
-    interval_entity = TrendNumber(
-        "Trend Sensor Interval",
-        "trend_sensor_interval",
-        DEFAULT_INTERVAL,
-        1,
-        3600,
-    )
-    steps_entity = TrendNumber(
-        "Trend Sensor Steps",
-        "trend_sensor_steps",
-        DEFAULT_TREND_VALUES,
-        1,
-        100,
-    )
+        # Create trend sensors for user-provided entities
+        trend_sensors = [
+            BetterTrendsSensor(entity_id, hass, entry)
+            for entity_id in user_entities
+        ]
+        async_add_entities(trend_sensors, update_before_add=True)
+    
+        # Register number entities with the number domain
+        number_platform = hass.helpers.entity_platform.async_get_or_create("number")
+        number_platform.async_add_entities([interval_entity, steps_entity], update_before_add=True)
 
-    # Register number entities with the number domain
-    number_platform = hass.helpers.entity_platform.async_get_or_create("number")
-    number_platform.async_add_entities([interval_entity, steps_entity], update_before_add=True)
-
-    # Create trend sensors for user-provided entities
-    trend_sensors = [
-        BetterTrendsSensor(entity_id, hass, interval_entity, steps_entity)
-        for entity_id in user_entities
-    ]
-    async_add_entities(trend_sensors, update_before_add=True)
+        # Create trend sensors for user-provided entities
+        trend_sensors = [
+            BetterTrendsSensor(entity_id, hass, interval_entity, steps_entity)
+            for entity_id in user_entities
+        ]
+        async_add_entities(trend_sensors, update_before_add=True)
 
 
 class TrendNumber(NumberEntity):

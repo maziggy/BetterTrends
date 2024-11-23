@@ -6,20 +6,19 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     """Set up BetterTrends numbers from a config entry."""
     # Create numeric entities for interval and steps
     interval_entity = TrendNumber(
         "Trend Sensor Interval",
-        "trend_sensor_interval",
+        f"{entry.entry_id}_trend_sensor_interval",
         DEFAULT_INTERVAL,
         1,
         3600,
     )
     steps_entity = TrendNumber(
         "Trend Sensor Steps",
-        "trend_sensor_steps",
+        f"{entry.entry_id}_trend_sensor_steps",
         DEFAULT_TREND_VALUES,
         1,
         100,
