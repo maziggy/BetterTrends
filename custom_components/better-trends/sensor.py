@@ -97,6 +97,9 @@ class BetterTrendsSensor(SensorEntity):
         """Collect entity state at regular intervals and calculate the trend."""
         while True:
             try:
+                # Update interval and steps dynamically
+                self._update_interval_and_steps()
+
                 state = self.hass.states.get(self._entity_id)
                 if state:
                     try:
@@ -120,15 +123,27 @@ class BetterTrendsSensor(SensorEntity):
             await asyncio.sleep(self._interval)
 
     def _add_value(self, value):
-        """Maintain a fixed-length buffer and calculate trend when steps are reached."""
+        """Maintain a rolling buffer and calculate trend when steps are reached."""
         self._values.append(value)
 
-        # Check if we have enough values to calculate the trend
-        if len(self._values) >= self._steps:
+        # Ensure the buffer size does not exceed the step count
+        if len(self._values) > self._steps:
+            self._values.pop(0)  # Remove the oldest value
+
+        _LOGGER.debug(f"Buffer updated: {self._values}")
+
+        # Calculate trend if buffer size reaches the step count
+        if len(self._values) == self._steps:
             self._state = self._calculate_trend()
-            self._values = []  # Reset the buffer after trend calculation
+            _LOGGER.debug(f"Trend calculated: {self._state}")
 
     def _calculate_trend(self):
         """Calculate the trend based on the rolling buffer."""
+        if not self._values:
+            _LOGGER.warning("Trend calculation called with an empty buffer.")
+            return 0.0  # Default to 0 if buffer is empty
+
         total = sum(self._values)
-        return round(total / len(self._values), 2)
+        trend = round(total / len(self._values), 2)
+        _LOGGER.debug(f"Calculating trend: Total={total}, Count={len(self._values)}, Trend={trend}")
+        return trend
