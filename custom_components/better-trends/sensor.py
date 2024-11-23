@@ -28,7 +28,7 @@ class BetterTrendsSensor(SensorEntity):
         self._entity_id = entity_id
         self.hass = hass
         self._values = []
-        self._state = None
+        self._state = 0  # Default state to 0
         self._attr_name = f"Trend {entity_id}"
         self._attr_unique_id = f"better_trends_{entity_id}"
         self._interval_entity = "number.trend_sensor_interval"
@@ -36,6 +36,7 @@ class BetterTrendsSensor(SensorEntity):
         self._interval = 60  # Default interval
         self._steps = 10  # Default steps
         self._unsub_listeners = []  # List to store unsub functions for state listeners
+        self._current_step_entity = "number.trend_sensor_current_step"
 
     @property
     def native_value(self):
@@ -43,7 +44,12 @@ class BetterTrendsSensor(SensorEntity):
         return self._state
 
     async def async_added_to_hass(self):
-        """Start periodic data collection and listen for changes in interval/steps."""
+        """Start periodic data collection and initialize default states."""
+        # Set default values for `self._state` and `current_step_entity`
+        self.async_write_ha_state()
+        self.hass.states.async_set(self._current_step_entity, 0, {})
+
+        # Fetch the current interval and steps
         self._update_interval_and_steps()
 
         # Listen for state changes to interval and steps
@@ -89,8 +95,6 @@ class BetterTrendsSensor(SensorEntity):
 
     async def _collect_data(self):
         """Collect entity state at regular intervals and calculate the trend."""
-        current_step_entity = "number.trend_sensor_current_step"  # Hardcoded entity ID
-
         while True:
             try:
                 state = self.hass.states.get(self._entity_id)
@@ -101,7 +105,7 @@ class BetterTrendsSensor(SensorEntity):
 
                         # Dynamically update the current step entity
                         current_step = len(self._values)
-                        self.hass.states.async_set(current_step_entity, current_step, {})
+                        self.hass.states.async_set(self._current_step_entity, current_step, {})
                     except ValueError:
                         _LOGGER.warning(f"Invalid state for {self._entity_id}: {state.state}")
                         self._state = None
