@@ -33,8 +33,8 @@ class BetterTrendsSensor(SensorEntity):
         self._attr_unique_id = f"better_trends_{entity_id}"
         self._interval_entity = "number.trend_sensor_interval"
         self._steps_entity = "number.trend_sensor_steps"
-        self._interval = 60  # Default interval
-        self._steps = 10  # Default steps
+        self._interval = self.hass.states.get(self._interval_entity)
+        self._steps = self.hass.states.get(self._steps_entity)
         self._unsub_listeners = []  # List to store unsub functions for state listeners
         self._current_step_entity = "number.trend_sensor_current_step"
 
