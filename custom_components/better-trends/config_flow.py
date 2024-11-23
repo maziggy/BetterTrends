@@ -16,7 +16,9 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             # Get the most recent entity field
-            new_entity = user_input.get(f"entity_{len(self.entities)} or leave blank to finish setup.", "")
+            new_entity = user_input.get(
+                f"entity_{len(self.entities)} or leave blank to finish setup.", ""
+            )
 
             if new_entity:
                 # Validate the entered entity
@@ -53,6 +55,6 @@ class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             schema[vol.Optional(f"entity_{i}", default=entity)] = str
 
         # Add a new empty field for the next entity
-        schema[vol.Optional(f"entity_{len(self.entities)}")] = str
+        schema[vol.Optional(f"entity_{len(self.entities)} or leave blank to finish setup.")] = str
 
         return vol.Schema(schema)

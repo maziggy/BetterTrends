@@ -6,5 +6,6 @@
   "requirements": ["homeassistant-api"],
   "dependencies": [],
   "codeowners": ["@maziggy"],
-  "config_flow": true
+  "config_flow": true,
+  "iot_class": "local_polling"
 }
