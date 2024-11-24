@@ -11,7 +11,7 @@ def init_metrics(entities):
             {'entity': entity, **{f'value{i}': 0.0 for i in range(6)}}
         )
 
-    _LOGGER.debug(f"init_metrics > metrics: {metrics}")
+    #_LOGGER.debug(f"init_metrics > metrics: {metrics}")
     return metrics
 
 
@@ -26,7 +26,7 @@ def calculate(entity, last, trend_values):
             counter += 1
 
     result = round(last - (value / trend_values), 1)
-    _LOGGER.debug(f"calculate > entity: {entity}, last: {last}, values: {trend_values}, result: {result}")
+    #_LOGGER.debug(f"calculate > entity: {entity}, last: {last}, values: {trend_values}, result: {result}")
     return result
 
 
@@ -35,7 +35,7 @@ async def set_ha_data(hass, api_url, token, entity, data):
     try:
         if data == -0.0:
             data = 0.0
-        _LOGGER.debug(f"set_ha_data > entity: {entity}, data: {data}")
+        #_LOGGER.debug(f"set_ha_data > entity: {entity}, data: {data}")
         with Client(api_url, token) as client:
             client.set_state(State(state=str(data), entity_id=entity + "_last"))
     except Exception as e:
@@ -45,7 +45,7 @@ async def set_ha_data(hass, api_url, token, entity, data):
 async def set_ha_counter(hass, api_url, token, entity, value):
     """Set a counter in Home Assistant."""
     try:
-        _LOGGER.debug(f"set_ha_counter > entity: {entity}, value: {value}")
+        #_LOGGER.debug(f"set_ha_counter > entity: {entity}, value: {value}")
         with Client(api_url, token) as client:
             client.set_state(State(state=str(value), entity_id=entity))
     except Exception as e:
@@ -58,7 +58,7 @@ async def get_ha_data(hass, api_url, token, entity):
         with Client(api_url, token) as client:
             state = client.get_state(entity_id=entity)
             result = round(float(state.state), 1)
-            _LOGGER.debug(f"get_ha_data > entity: {entity}, result: {result}")
+            #_LOGGER.debug(f"get_ha_data > entity: {entity}, result: {result}")
             return result
     except Exception as e:
         _LOGGER.error(f"get_ha_data > Error: {e}")

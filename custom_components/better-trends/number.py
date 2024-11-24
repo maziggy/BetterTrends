@@ -8,7 +8,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     """Set up BetterTrends numbers from a config entry."""
-    _LOGGER.debug("Initializing TrendNumber entities")
+    #_LOGGER.debug("Initializing TrendNumber entities")
 
     try:
         # Create numeric entities for interval, steps, and current step
@@ -16,7 +16,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             "Trend Sensor Interval",
             f"{entry.entry_id}_trend_sensor_interval",
             DEFAULT_INTERVAL,
-            10,
+            5,
             9999,
         )
         steps_entity = TrendNumber(
@@ -34,12 +34,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             1000,
         )
 
-        _LOGGER.debug("Adding TrendNumber entities: interval_entity, steps_entity, and current_step_entity.")
+        #_LOGGER.debug("Adding TrendNumber entities: interval_entity, steps_entity, and current_step_entity.")
         async_add_entities([interval_entity, steps_entity, current_step_entity], update_before_add=True)
-        _LOGGER.debug("Entities added successfully")
+        #_LOGGER.debug("Entities added successfully")
     except Exception as e:
         _LOGGER.error(f"Error setting up entities: {e}")
-
 
 class TrendNumber(NumberEntity):
     """A numeric entity representing a configurable value."""
@@ -52,7 +51,7 @@ class TrendNumber(NumberEntity):
         self._attr_max_value = max_value
         self._attr_step = 1  # Step size for adjustments
         self._attr_mode = NumberMode.BOX  # Editable field in the UI
-        
+
     async def async_added_to_hass(self):
         """Set initial state when added to hass."""
         self.async_write_ha_state()
@@ -73,4 +72,4 @@ class TrendNumber(NumberEntity):
 
         self._attr_native_value = int(value)
         self.async_write_ha_state()
-        _LOGGER.info(f"{self._attr_name} updated to {self._attr_native_value}")
+        #_LOGGER.info(f"{self._attr_name} updated to {self._attr_native_value}")

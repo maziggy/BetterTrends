@@ -9,12 +9,12 @@ DOMAIN = "better_trends"
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up BetterTrends from a config entry."""
-    _LOGGER.debug(f"Setting up BetterTrends for entry: {entry.entry_id}")
+    #_LOGGER.debug(f"Setting up BetterTrends for entry: {entry.entry_id}")
 
     # Forward the setup to the appropriate platforms
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "number"])
 
-    _LOGGER.debug(f"Forwarded entry setup for sensor and number platforms")
+    #_LOGGER.debug(f"Forwarded entry setup for sensor and number platforms")
     return True
 
 
