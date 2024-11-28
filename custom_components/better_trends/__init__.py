@@ -1,9 +1,7 @@
 from homeassistant.components.persistent_notification import async_create
 from homeassistant.components.http import HomeAssistantView
-from homeassistant.helpers import entity_registry
-from homeassistant.helpers.storage import STORAGE_DIR
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import aiohttp_client
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from aiohttp import web
 from pathlib import Path
@@ -19,27 +17,39 @@ LOVELACE_RESOURCES = [
 ]
 
 
-async def add_lovelace_resources(hass: HomeAssistant):
-    """Add the custom Lovelace resources for BetterTrends."""
-    resource_service = hass.services.async_services().get("lovelace", {}).get("resources/create")
-    if not resource_service:
-        _LOGGER.error("Lovelace resource service is not available.")
-        raise RuntimeError("Lovelace resources cannot be added automatically.")
+async def _register_lovelace_resources(hass: HomeAssistant):
+    """Register the Lovelace resources."""
+    session = aiohttp_client.async_get_clientsession(hass)
+    base_url = hass.config.external_url or hass.config.internal_url
 
-    resources = hass.data.get("lovelace", {}).get("resources", [])
+    if not base_url:
+        _LOGGER.error("Home Assistant external or internal URL is not configured.")
+        raise RuntimeError("Cannot register Lovelace resources without a base URL.")
 
     for resource in LOVELACE_RESOURCES:
-        if not any(res.get("url") == resource["url"] for res in resources):
-            try:
-                await hass.services.async_call(
-                    "lovelace",
-                    "resources/create",
-                    {"res_type": resource["type"], "url": resource["url"]},
-                )
-                _LOGGER.info(f"Added Lovelace resource: {resource['url']}")
-            except Exception as err:
-                _LOGGER.error(f"Failed to add Lovelace resource {resource['url']}: {err}")
-                raise RuntimeError(f"Failed to add resource: {resource['url']}") from err
+        url = resource["url"]
+        full_url = f"{base_url}{url}"
+
+        # Check if the resource is already available
+        try:
+            async with session.get(full_url) as resp:
+                if resp.status == 200:
+                    _LOGGER.info(f"Lovelace resource already exists: {full_url}")
+                    continue
+        except Exception as err:
+            _LOGGER.warning(f"Could not verify resource {full_url}: {err}")
+
+        # Add the resource if not found
+        try:
+            await hass.services.async_call(
+                "lovelace",
+                "resources/create",
+                {"res_type": resource["type"], "url": url},
+            )
+            _LOGGER.info(f"Added Lovelace resource: {url}")
+        except Exception as err:
+            _LOGGER.error(f"Failed to add Lovelace resource {url}: {err}")
+            raise RuntimeError(f"Failed to add resource: {url}") from err
 
 
 class BetterTrendsResourceView(HomeAssistantView):
@@ -64,16 +74,16 @@ class BetterTrendsResourceView(HomeAssistantView):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up BetterTrends from a config entry."""
-    component_path = Path(hass.config.path(STORAGE_DIR)) / DOMAIN
+    component_path = Path(hass.config.path("custom_components")) / DOMAIN
 
     # Register the resource view to serve files
     hass.http.register_view(BetterTrendsResourceView(str(component_path)))
 
     # Add the Lovelace resources automatically
     try:
-        await add_lovelace_resources(hass)
+        await _register_lovelace_resources(hass)
     except RuntimeError as err:
-        _LOGGER.error(f"Error adding Lovelace resources: {err}")
+        _LOGGER.error(f"Error registering Lovelace resources: {err}")
         message = (
             f"BetterTrends was installed, but the Lovelace resources could not be added automatically.\n\n"
             f"Please add them manually via Dashboard Resources:\n\n"
