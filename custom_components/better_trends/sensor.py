@@ -2,7 +2,7 @@ import asyncio
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from .const import DOMAIN
+from .const import DOMAIN, DEFAULT_INTERVAL, DEFAULT_TREND_VALUES
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,27 +37,34 @@ class BetterTrendsManager(SensorEntity):
     def __init__(self, hass: HomeAssistant, entities: list):
         """Initialize the BetterTrends Manager."""
         self.hass = hass
-        self._entities = entities
-        self._interval = 5
-        self._trend_values = 5
+        self._entities = set(entities)  # Use a set for dynamic updates
+        self._interval = DEFAULT_INTERVAL
+        self._trend_values = DEFAULT_TREND_VALUES
         self._counter = 0
         self._running = False
         self._task = None
         self._state = "idle"
 
         # Buffers to store trend data
-        self._buffers = {entity: [0.0] * 5 for entity in entities}
+        self._buffers = {}
 
     async def async_added_to_hass(self):
         """Start trend processing when added to Home Assistant."""
         _LOGGER.debug("Starting BetterTrends Manager task.")
         await self._load_settings()
+        self._initialize_buffers()
         self._start_task()
 
     async def async_will_remove_from_hass(self):
         """Stop trend processing when removed."""
         _LOGGER.debug("Stopping BetterTrends Manager task.")
         self._stop_task()
+
+    def _initialize_buffers(self):
+        """Initialize buffers for all configured entities."""
+        for entity in self._entities:
+            if entity not in self._buffers:
+                self._buffers[entity] = [0.0] * self._trend_values
 
     def _start_task(self):
         """Start the main processing loop."""
@@ -73,8 +80,9 @@ class BetterTrendsManager(SensorEntity):
 
     async def _load_settings(self):
         """Load settings for interval and trend values."""
-        self._interval = self._get_ha_state(TREND_INTERVAL_ENTITY, default=5, cast_type=int)
-        self._trend_values = self._get_ha_state(TREND_VALUES_ENTITY, default=5, cast_type=int)
+        self._interval = self._get_ha_state(TREND_INTERVAL_ENTITY, default=DEFAULT_INTERVAL, cast_type=int)
+        self._trend_values = self._get_ha_state(TREND_VALUES_ENTITY, default=DEFAULT_INTERVAL, cast_type=int)
+        self._initialize_buffers()  # Reinitialize buffers with updated settings
 
     async def _main_loop(self):
         """Main loop for processing trends."""
@@ -91,6 +99,9 @@ class BetterTrendsManager(SensorEntity):
 
     async def _process_trends(self):
         """Process trend calculations for each entity."""
+        # Ensure buffers are initialized for all entities
+        self._initialize_buffers()
+
         for entity_id in self._entities:
             state = self.hass.states.get(entity_id)
             if not state or state.state in (None, "unknown"):
@@ -129,6 +140,21 @@ class BetterTrendsManager(SensorEntity):
                 _LOGGER.warning("Invalid state for %s: %s", entity_id, state.state)
         return default
 
+    def add_entity(self, entity_id: str):
+        """Dynamically add an entity to the manager."""
+        if entity_id not in self._entities:
+            self._entities.add(entity_id)
+            self._buffers[entity_id] = [0.0] * self._trend_values
+            _LOGGER.info("Added entity %s to BetterTrends.", entity_id)
+
+    def remove_entity(self, entity_id: str):
+        """Dynamically remove an entity from the manager."""
+        if entity_id in self._entities:
+            self._entities.remove(entity_id)
+            if entity_id in self._buffers:
+                del self._buffers[entity_id]
+            _LOGGER.info("Removed entity %s from BetterTrends.", entity_id)
+
     @property
     def name(self):
         """Return the name of the manager."""
@@ -157,6 +183,7 @@ class BetterTrendsSensor(SensorEntity):
     async def async_added_to_hass(self):
         """Handle entity addition."""
         _LOGGER.debug("Added BetterTrends sensor for %s.", self._entity_id)
+        self.update()  # Initial update
 
     @property
     def name(self):
@@ -175,4 +202,20 @@ class BetterTrendsSensor(SensorEntity):
 
     def update(self):
         """Update the state from the manager."""
-        self._state = self.hass.states.get(f"{self._entity_id}_last")
+        entity_last = self.hass.states.get(f"{self._entity_id}_last")
+        if entity_last and entity_last.state not in (None, "unknown"):
+            try:
+                self._state = float(entity_last.state)  # Convert to float
+            except ValueError:
+                _LOGGER.error(
+                    "Invalid state for %s: %s is not a numeric value.",
+                    f"{self._entity_id}_last",
+                    entity_last.state,
+                )
+                self._state = None  # Reset state to None if invalid
+        else:
+            _LOGGER.warning(
+                "Entity %s_last is unavailable or has no valid state.",
+                self._entity_id,
+            )
+            self._state = None  # Reset state to None if unavailable

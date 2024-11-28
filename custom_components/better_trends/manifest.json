@@ -10,11 +10,11 @@
   "iot_class": "local_polling",
   "resources": [
     {
-      "url": "/better_trends/trend-card.min.js",
+      "url": "/hacsfiles/better_trends/lovelace/trend-card.min.js",
       "type": "module"
     },
     {
-      "url": "/better_trends/trend-card-lite.min.js",
+      "url": "/hacsfiles/better_trends/lovelace/trend-card-lite.min.js",
       "type": "module"
     }
   ]
