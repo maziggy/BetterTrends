@@ -1,9 +1,11 @@
+from homeassistant.components.persistent_notification import async_create
 from homeassistant.components.http import HomeAssistantView
-from homeassistant.loader import async_get_integration
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import entity_registry
+from homeassistant.helpers.storage import STORAGE_DIR
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import aiohttp_client
 from homeassistant.core import HomeAssistant
+from aiohttp import web
 from pathlib import Path
 import logging
 
@@ -16,32 +18,28 @@ LOVELACE_RESOURCES = [
     {"url": "/better_trends/trend-card-lite.min.js", "type": "module"},
 ]
 
-async def _register_lovelace_resources(hass):
-    """Register custom Lovelace resources."""
-    # Ensure the 'lovelace' integration is loaded
-    lovelace_integration = await async_get_integration(hass, "lovelace")
 
-    if not lovelace_integration:
-        _LOGGER.error("Lovelace integration not found, unable to register resources.")
-        return
+async def add_lovelace_resources(hass: HomeAssistant):
+    """Add the custom Lovelace resources for BetterTrends."""
+    resource_service = hass.services.async_services().get("lovelace", {}).get("resources/create")
+    if not resource_service:
+        _LOGGER.error("Lovelace resource service is not available.")
+        raise RuntimeError("Lovelace resources cannot be added automatically.")
 
-    # Fetch the Lovelace resources storage
-    url = "/api/resources"
-    session = aiohttp_client.async_get_clientsession(hass)
-    async with session.get(f"{hass.config.api.base_url}{url}") as resp:
-        if resp.status != 200:
-            _LOGGER.error("Failed to fetch Lovelace resources: %s", resp.status)
-            return
-        existing_resources = await resp.json()
+    resources = hass.data.get("lovelace", {}).get("resources", [])
 
-    # Register any missing resources
     for resource in LOVELACE_RESOURCES:
-        if not any(r["url"] == resource["url"] for r in existing_resources):
-            async with session.post(f"{hass.config.api.base_url}{url}", json=resource) as resp:
-                if resp.status != 200:
-                    _LOGGER.error("Failed to register Lovelace resource: %s", resp.status)
-                else:
-                    _LOGGER.info("Registered Lovelace resource: %s", resource["url"])
+        if not any(res.get("url") == resource["url"] for res in resources):
+            try:
+                await hass.services.async_call(
+                    "lovelace",
+                    "resources/create",
+                    {"res_type": resource["type"], "url": resource["url"]},
+                )
+                _LOGGER.info(f"Added Lovelace resource: {resource['url']}")
+            except Exception as err:
+                _LOGGER.error(f"Failed to add Lovelace resource {resource['url']}: {err}")
+                raise RuntimeError(f"Failed to add resource: {resource['url']}") from err
 
 
 class BetterTrendsResourceView(HomeAssistantView):
@@ -66,14 +64,28 @@ class BetterTrendsResourceView(HomeAssistantView):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up BetterTrends from a config entry."""
-    # Serve Lovelace resources
-    hass.http.register_view(BetterTrendsResourceView(hass.config.path("custom_components/better_trends")))
+    component_path = Path(hass.config.path(STORAGE_DIR)) / DOMAIN
 
-    # Register Lovelace resources
-    await _register_lovelace_resources(hass)
+    # Register the resource view to serve files
+    hass.http.register_view(BetterTrendsResourceView(str(component_path)))
 
-    # Forward setup to platforms
+    # Add the Lovelace resources automatically
+    try:
+        await add_lovelace_resources(hass)
+    except RuntimeError as err:
+        _LOGGER.error(f"Error adding Lovelace resources: {err}")
+        message = (
+            f"BetterTrends was installed, but the Lovelace resources could not be added automatically.\n\n"
+            f"Please add them manually via Dashboard Resources:\n\n"
+            f"- URL: {LOVELACE_RESOURCES[0]['url']} (Type: {LOVELACE_RESOURCES[0]['type']})\n"
+            f"- URL: {LOVELACE_RESOURCES[1]['url']} (Type: {LOVELACE_RESOURCES[1]['type']})\n\n"
+            "Go to **Settings > Dashboards > Resources** to add them."
+        )
+        async_create(hass, message, title="BetterTrends Setup")
+
+    # Forward the setup to the appropriate platforms
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "number"])
+
     return True
 
 
