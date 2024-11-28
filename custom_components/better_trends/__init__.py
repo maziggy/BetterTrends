@@ -1,6 +1,8 @@
 from homeassistant.components.http import HomeAssistantView
+from homeassistant.loader import async_get_integration
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import entity_registry
+from homeassistant.helpers import aiohttp_client
 from homeassistant.core import HomeAssistant
 from pathlib import Path
 import logging
@@ -16,12 +18,30 @@ LOVELACE_RESOURCES = [
 
 async def _register_lovelace_resources(hass):
     """Register custom Lovelace resources."""
-    resources = hass.data.get("lovelace_resources", [])
+    # Ensure the 'lovelace' integration is loaded
+    lovelace_integration = await async_get_integration(hass, "lovelace")
 
+    if not lovelace_integration:
+        _LOGGER.error("Lovelace integration not found, unable to register resources.")
+        return
+
+    # Fetch the Lovelace resources storage
+    url = "/api/resources"
+    session = aiohttp_client.async_get_clientsession(hass)
+    async with session.get(f"{hass.config.api.base_url}{url}") as resp:
+        if resp.status != 200:
+            _LOGGER.error("Failed to fetch Lovelace resources: %s", resp.status)
+            return
+        existing_resources = await resp.json()
+
+    # Register any missing resources
     for resource in LOVELACE_RESOURCES:
-        if not any(r["url"] == resource["url"] for r in resources):
-            hass.http.lovelace_resources.append(resource)
-            _LOGGER.info(f"Registered Lovelace resource: {resource['url']}")
+        if not any(r["url"] == resource["url"] for r in existing_resources):
+            async with session.post(f"{hass.config.api.base_url}{url}", json=resource) as resp:
+                if resp.status != 200:
+                    _LOGGER.error("Failed to register Lovelace resource: %s", resp.status)
+                else:
+                    _LOGGER.info("Registered Lovelace resource: %s", resource["url"])
 
 
 class BetterTrendsResourceView(HomeAssistantView):
@@ -46,8 +66,13 @@ class BetterTrendsResourceView(HomeAssistantView):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up BetterTrends from a config entry."""
+    # Serve Lovelace resources
     hass.http.register_view(BetterTrendsResourceView(hass.config.path("custom_components/better_trends")))
+
+    # Register Lovelace resources
     await _register_lovelace_resources(hass)
+
+    # Forward setup to platforms
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "number"])
     return True
 
