@@ -28,19 +28,8 @@ async def _register_lovelace_resources(hass: HomeAssistant):
 
     for resource in LOVELACE_RESOURCES:
         url = resource["url"]
-        full_url = f"{base_url}{url}"
-
-        # Check if the resource is already available
         try:
-            async with session.get(full_url) as resp:
-                if resp.status == 200:
-                    _LOGGER.info(f"Lovelace resource already exists: {full_url}")
-                    continue
-        except Exception as err:
-            _LOGGER.warning(f"Could not verify resource {full_url}: {err}")
-
-        # Add the resource if not found
-        try:
+            # Try adding the resource directly
             await hass.services.async_call(
                 "lovelace",
                 "resources/create",
@@ -48,8 +37,10 @@ async def _register_lovelace_resources(hass: HomeAssistant):
             )
             _LOGGER.info(f"Added Lovelace resource: {url}")
         except Exception as err:
-            _LOGGER.error(f"Failed to add Lovelace resource {url}: {err}")
-            raise RuntimeError(f"Failed to add resource: {url}") from err
+            _LOGGER.warning(
+                f"Failed to add Lovelace resource {url}: {err}. "
+                f"Please ensure the resource is available manually."
+            )
 
 
 class BetterTrendsResourceView(HomeAssistantView):
