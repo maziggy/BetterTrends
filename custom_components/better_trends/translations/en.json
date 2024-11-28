@@ -1,0 +1,18 @@
+{
+  "title": "BetterTrends",
+  "config": {
+    "step": {
+      "user": {
+        "title": "BetterTrends Configuration",
+        "description": "Add sensors for trend calculations. Leave the field empty to finish.",
+        "data": {
+          "new_entity": "Enter a sensor entity (leave empty to finish)"
+        }
+      }
+    },
+    "error": {
+      "invalid_entity": "Invalid entity. Please enter a valid sensor.",
+      "no_entities": "No entities added. Please add at least one sensor."
+    }
+  }
+}
