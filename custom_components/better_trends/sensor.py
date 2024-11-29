@@ -190,14 +190,14 @@ class BetterTrendsManager(SensorEntity):
                 _LOGGER.error("Skipping entity %s: State is not numeric.", entity_id)
                 continue
 
-            # Update buffer
+            # Update buffer for the entity
             buffer = self._buffers[entity_id]
             buffer.append(current_value)
 
-            # If buffer is full, calculate the trend and reset
+            # If buffer is full, calculate the trend and reset the buffer
             if len(buffer) == self._trend_values:
                 trend_value = self._calculate_trend(buffer)
-                self.hass.states.async_set(f"{entity_id}_last", trend_value)
+                self._update_sensor_state(entity_id, trend_value)
                 _LOGGER.info("Updated trend for %s: %s", entity_id, trend_value)
                 self._buffers[entity_id] = []  # Reset buffer
 
@@ -206,11 +206,26 @@ class BetterTrendsManager(SensorEntity):
         self.hass.states.async_set(TREND_COUNTER_ENTITY, self._counter)
         _LOGGER.debug("Updated global current step to %d", self._counter)
 
-    def _calculate_trend(self, buffer):
+    def _update_sensor_state(self, entity_id: str, trend_value: float):
+        """Update the trend sensor state in Home Assistant."""
+        # Normalize -0.0 to 0.0
+        if trend_value == -0.0:
+            trend_value = 0.0
+
+        sensor_entity_id = f"sensor.better_trends_{entity_id.split('.')[-1]}"
+        self.hass.states.async_set(sensor_entity_id, trend_value)
+        _LOGGER.debug("Set state for %s to %f", sensor_entity_id, trend_value)
+
+    def _calculate_trend(self, buffer: list[float]) -> float:
         """Calculate the trend-adjusted value."""
         avg = sum(buffer) / len(buffer)
-        current_value = buffer[-1]  # Use the latest value
-        return round(current_value - avg, 2)
+        trend_value = round(buffer[-1] - avg, 2)
+
+        # Normalize -0.0 to 0.0
+        if trend_value == -0.0:
+            trend_value = 0.0
+
+        return trend_value
 
     def add_entity(self, entity_id: str):
         """Dynamically add an entity to the manager."""
