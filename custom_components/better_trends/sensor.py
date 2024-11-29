@@ -127,6 +127,11 @@ class BetterTrendsManager(SensorEntity):
             self._buffers = {}  # Clear buffers to enforce reinitialization
             self._initialize_buffers()
 
+    def _update_current_step_state(self, entity_id: str, current_step: int):
+        """Update the current step state in Home Assistant."""
+        self.hass.states.async_set(f"{entity_id}_current_step", current_step)
+        _LOGGER.debug("Current step for %s updated to %d in Home Assistant.", entity_id, current_step)
+
     def _get_ha_state(self, entity_id: str, default=None, cast_type=str):
         """Retrieve the state of a Home Assistant entity."""
         state = self.hass.states.get(entity_id)
@@ -173,10 +178,6 @@ class BetterTrendsManager(SensorEntity):
 
     async def _process_trends(self):
         """Process trend calculations for each entity."""
-        # Dynamically reload settings
-        await self._reload_settings()
-        await self._reload_trend_values()
-
         for entity_id in self._entities:
             state = self.hass.states.get(entity_id)
             if not state or state.state in (None, "unknown"):
@@ -189,25 +190,21 @@ class BetterTrendsManager(SensorEntity):
                 _LOGGER.error("Skipping entity %s: State is not numeric.", entity_id)
                 continue
 
-            # Add the current value to the buffer
+            # Update buffer
             buffer = self._buffers[entity_id]
             buffer.append(current_value)
 
-            _LOGGER.debug("Buffer for %s: %s", entity_id, buffer)
-
-            # When the buffer reaches the configured steps
+            # If buffer is full, calculate the trend and reset
             if len(buffer) == self._trend_values:
-                # Calculate the trend
-                new_value = self._calculate_trend(buffer)
-                self.hass.states.async_set(f"{entity_id}_last", new_value)
-                _LOGGER.info("Updated trend for %s: %s", entity_id, new_value)
+                trend_value = self._calculate_trend(buffer)
+                self.hass.states.async_set(f"{entity_id}_last", trend_value)
+                _LOGGER.info("Updated trend for %s: %s", entity_id, trend_value)
+                self._buffers[entity_id] = []  # Reset buffer
 
-                # Reset the buffer for the next cycle
-                self._buffers[entity_id] = []
-
-            # Update the current step count
-            self._counter = len(buffer)
-            self.hass.states.async_set(TREND_COUNTER_ENTITY, self._counter)
+        # Update the global current step
+        self._counter = (self._counter + 1) % self._trend_values
+        self.hass.states.async_set(TREND_COUNTER_ENTITY, self._counter)
+        _LOGGER.debug("Updated global current step to %d", self._counter)
 
     def _calculate_trend(self, buffer):
         """Calculate the trend-adjusted value."""
