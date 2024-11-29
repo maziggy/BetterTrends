@@ -3,6 +3,7 @@ import voluptuous as vol
 from homeassistant.helpers import selector
 from .const import DOMAIN
 
+
 class BetterTrendsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for BetterTrends."""
 
