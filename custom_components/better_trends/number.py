@@ -1,43 +1,38 @@
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from .const import DOMAIN, DEFAULT_INTERVAL, DEFAULT_TREND_VALUES
+from .const import DOMAIN, DEFAULT_INTERVAL, DEFAULT_TREND_VALUES, TREND_INTERVAL_ENTITY, TREND_VALUES_ENTITY, TREND_COUNTER_ENTITY
 import logging
 
 _LOGGER = logging.getLogger(__name__)
 
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     """Set up BetterTrends numbers from a config entry."""
-    # _LOGGER.debug("Initializing TrendNumber entities")
-
     try:
         # Create numeric entities for interval, steps, and current step
         interval_entity = TrendNumber(
-            "Trend Sensor Interval",
-            f"{entry.entry_id}_trend_sensor_interval",
+            "BetterTrends Interval",
+            TREND_INTERVAL_ENTITY,
             DEFAULT_INTERVAL,
             5,
             9999,
         )
         steps_entity = TrendNumber(
-            "Trend Sensor Steps",
-            f"{entry.entry_id}_trend_sensor_steps",
+            "BetterTrends Steps",
+            TREND_VALUES_ENTITY,
             DEFAULT_TREND_VALUES,
             1,
             1000,
         )
         current_step_entity = TrendNumber(
-            "Trend Sensor Current Step",
-            f"{entry.entry_id}_trend_sensor_current_step",
+            "BetterTrends Current Step",
+            TREND_COUNTER_ENTITY,
             0,  # Initial value should be 0 for the current step
             0,
             1000,
         )
 
-        # _LOGGER.debug("Adding TrendNumber entities: interval_entity, steps_entity, and current_step_entity.")
         async_add_entities([interval_entity, steps_entity, current_step_entity], update_before_add=True)
-        # _LOGGER.debug("Entities added successfully")
     except Exception as e:
         _LOGGER.error(f"Error setting up entities: {e}")
 
@@ -57,6 +52,11 @@ class TrendNumber(NumberEntity):
     async def async_added_to_hass(self):
         """Set initial state when added to hass."""
         self.async_write_ha_state()
+
+    @property
+    def unique_id(self):
+        """Return the unique ID."""
+        return self._attr_unique_id
 
     @property
     def native_value(self):
