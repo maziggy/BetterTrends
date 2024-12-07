@@ -154,7 +154,7 @@ class BetterTrendsManager(SensorEntity):
 
             _LOGGER.debug("Buffer for entity %s: %s", entity_id, buffer)
 
-            if self._counter == self._trend_values:
+            if self._counter >= self._trend_values:
                 trend_value = self._calculate_trend(entity_id, buffer)
                 sensor_entity_id = f"sensor.bettertrends_{entity_id.replace('.', '_')}"
 
