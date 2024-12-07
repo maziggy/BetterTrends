@@ -20,7 +20,7 @@ A custom Home Assistant integration, that calculates trend values for entities a
 * A: data fetch interval
 * B: datasets fetched before calculating new trend value
 * C: current datasets collected
-* D: Total datasets required to calculate trend value (euqals B)
+* D: Total datasets required to calculate trend value (equals B)
 
 You can click on A (interval), or B (steps) to change number.
 
