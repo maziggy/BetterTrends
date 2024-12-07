@@ -1,21 +1,11 @@
 {
-  "domain": "better_trends",
-  "name": "Better Trends",
-  "version": "2024.11.28",
-  "documentation": "https://github.com/maziggy/BetterTrends",
-  "requirements": ["homeassistant-api"],
-  "dependencies": [],
-  "codeowners": ["@maziggy"],
-  "config_flow": true,
-  "iot_class": "local_polling",
-  "resources": [
-    {
-      "url": "/hacsfiles/better_trends/lovelace/trend-card.min.js",
-      "type": "module"
-    },
-    {
-      "url": "/hacsfiles/better_trends/lovelace/trend-card-lite.min.js",
-      "type": "module"
-    }
-  ]
+    "domain": "better_trends",
+    "name": "Better Trends",
+    "version": "2024.12.07",
+    "documentation": "https://github.com/maziggy/BetterTrends",
+    "requirements": ["homeassistant-api"],
+    "dependencies": [],
+    "codeowners": ["@maziggy"],
+    "config_flow": true,
+    "iot_class": "local_polling"
 }
