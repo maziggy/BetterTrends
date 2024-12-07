@@ -2,7 +2,8 @@ import asyncio
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from .const import DOMAIN, DEFAULT_INTERVAL, DEFAULT_TREND_VALUES, TREND_INTERVAL_ENTITY, TREND_VALUES_ENTITY, TREND_COUNTER_ENTITY
+from .const import DOMAIN, DEFAULT_INTERVAL, DEFAULT_TREND_VALUES, TREND_INTERVAL_ENTITY, TREND_VALUES_ENTITY, \
+    TREND_COUNTER_ENTITY
 import logging
 import sys
 

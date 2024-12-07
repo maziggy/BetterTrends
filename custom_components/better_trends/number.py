@@ -1,10 +1,12 @@
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from .const import DOMAIN, DEFAULT_INTERVAL, DEFAULT_TREND_VALUES, TREND_INTERVAL_ENTITY, TREND_VALUES_ENTITY, TREND_COUNTER_ENTITY
+from .const import DOMAIN, DEFAULT_INTERVAL, DEFAULT_TREND_VALUES, TREND_INTERVAL_ENTITY, TREND_VALUES_ENTITY, \
+    TREND_COUNTER_ENTITY
 import logging
 
 _LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     """Set up BetterTrends numbers from a config entry."""
