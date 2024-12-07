@@ -42,3 +42,61 @@ or simply
 
 ![image](https://raw.githubusercontent.com/maziggy/BetterTrends/refs/heads/main/screenshots/BetterTrendsAddResource.png)
 
+## Cards and options
+
+### trend-card
+```yaml
+type: custom:trend-card
+interval: number.bettertrends_interval
+steps: number.bettertrends_steps
+current_step: number.bettertrends_current_step
+metric1_delta: sensor.bettertrends_<your_sensor_1>
+metric1_name: <name>
+metric2_delta: sensor.bettertrends_<your_sensor_2>
+metric2_name: <name>
+metric3_delta: sensor.bettertrends_<your_sensor_3>
+metric3_name: <name>
+theme:
+  bgColor: "#2c2c2e"
+  textColor: "#ffffff"
+  iconColor: "#ff9e32"
+  iconBgColor: "#323335"
+  metricBgColor: "#323335"
+  bubble1Color: "#1b7de5"
+  bubble1TextColor: "#ffffff"
+  value1TextColor: "#ffffff"
+  bubble2Color: "#e7970d"
+  bubble2TextColor: "#ffffff"
+  value2TextColor: "#ffffff"
+  bubble3Color: "#ab07ae"
+  bubble3TextColor: "#ffffff"
+  value3TextColor: "#ffffff"
+  trendDownColor: "#498bff"
+  trendEqualColor: "#4ff24b"
+  trendUpColor: "#ff4c4c"
+```
+
+### trend-card-lite
+```yaml
+type: custom:trend-card-lite
+metric1_delta: sensor.bettertrends_<your_sensor_1>
+metric1_delta_name: <name>
+metric2_delta: sensor.bettertrends_<your_sensor_2>
+metric2_delta_name: <name>
+metric3_delta: sensor.bettertrends_<your_sensor_3>
+metric3_delta_name: <name>
+theme:
+  bgColor: "#2c2c2e"
+  metricBgColor: "#212122"
+  bubble1Color: "#2b8dd9"
+  bubble1TextColor: "#ffffff"
+  value1TextColor: "#ffffff"
+  bubble2Color: "#e7970d"
+  bubble2TextColor: "#ffffff"
+  value2TextColor: "#ffffff"
+  bubble3Color: "#ab07ae"
+  bubble3TextColor: "#ffffff"
+  value3TextColor: "#ffffff"
+  trendDownColor: "#498bff"
+  trendEqualColor: "#4ff24b"
+  trendUpColor: "#ff4c4c"
