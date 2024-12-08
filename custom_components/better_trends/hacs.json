@@ -1,8 +1,8 @@
 {
   "name": "BetterTrends",
   "content_in_root": false,
-  "domains": ["better_trends"],
   "country": ["EN"],
   "homeassistant": "2023.0.0",
-  "render_readme": true
+  "render_readme": true,
+  "icon": "icon.png"
 }
