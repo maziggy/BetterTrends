@@ -8,6 +8,8 @@ Currently only three entities are supported, but will change in the near future.
 
 ![image](https://raw.githubusercontent.com/maziggy/BetterTrends/refs/heads/main/screenshots/BetterTrends.png)
 
+![image](https://raw.githubusercontent.com/maziggy/trendCardLite/refs/heads/main/screenshots/trendCardLite-Screenshot.png)
+
 ## How it works
 
 * Add your existing entities to calculate trend for
