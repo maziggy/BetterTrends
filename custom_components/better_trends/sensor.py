@@ -1,105 +1,150 @@
 import asyncio
+import logging
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers import entity_registry as er
+
 from .const import DOMAIN, DEFAULT_INTERVAL, DEFAULT_TREND_VALUES, TREND_INTERVAL_ENTITY, TREND_VALUES_ENTITY, \
     TREND_COUNTER_ENTITY
-import logging
-import sys
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
     """Set up BetterTrends sensors from a config entry."""
-    entities = entry.data.get("entities", [])
+    if DOMAIN in hass.data:
+        manager = hass.data[DOMAIN]
+        _LOGGER.debug("Adding new entities to existing BetterTrends Manager.")
+        new_entities = [e for e in entry.data.get("entities", []) if e not in manager._entities]
+        if new_entities:
+            manager.add_entities(new_entities)
+            better_trends_sensors = [BetterTrendsSensor(manager, entity_id) for entity_id in new_entities]
+            async_add_entities(better_trends_sensors)
+        return
 
+    _LOGGER.debug("Starting BetterTrends setup with entry data: %s", entry.data)
+    entities = entry.data.get("entities", [])
     if not entities:
         _LOGGER.error("No entities configured for BetterTrends. Exiting setup.")
         return
 
-    # Create the manager and dynamic sensors
+    # Initialize the manager
     manager = BetterTrendsManager(hass, entities)
+    hass.data[DOMAIN] = manager  # Store the manager instance globally
     async_add_entities([manager])
 
-    # Add individual trend sensors for each configured entity
-    sensors = [
-        BetterTrendsSensor(manager, entity_id) for entity_id in entities
-    ]
-
-    # Initialize sensors with state 0.0
-    for sensor in sensors:
-        hass.states.async_set(sensor.unique_id, 0.0)
-
-    async_add_entities(sensors)
+    # Add user-defined entities
+    better_trends_sensors = [BetterTrendsSensor(manager, entity_id) for entity_id in entities]
+    async_add_entities(better_trends_sensors)
+    _LOGGER.debug("Added BetterTrends user entities: %s", entities)
 
 
 class BetterTrendsManager(SensorEntity):
-    """Manages trend calculations for all configured sensors."""
-
     def __init__(self, hass: HomeAssistant, entities: list):
-        """Initialize the BetterTrends Manager."""
+        """Initialize the BetterTrends manager."""
         self.hass = hass
-        self._entities = set(entities)  # Use a set for dynamic updates
+        self._entities = set(entities)
         self._interval = DEFAULT_INTERVAL
         self._trend_values = DEFAULT_TREND_VALUES
-        self._counter = 0
-        self._running = False
-        self._task = None
+        self._trend_counter = 0
         self._state = "idle"
-
-        # Buffers to store trend data
         self._buffers = {}
+        self._counter_entity_id = TREND_COUNTER_ENTITY
+        self._running = False  # Initialize the _running flag
+        self._task = None  # Initialize the _task attribute
 
     async def async_added_to_hass(self):
-        """Start trend processing when added to Home Assistant."""
-        _LOGGER.debug("Starting BetterTrends Manager task.")
-        await self._load_settings()
-        self._start_task()
+        """Handle the addition of the BetterTrends Manager entity."""
+        _LOGGER.debug("BetterTrends Manager async_added_to_hass started.")
+        await asyncio.sleep(1)
+        await self._reload_settings()
+
+        # Ensure the counter entity exists
+        for attempt in range(5):
+            registry = er.async_get(self.hass)
+            existing_counter = registry.async_get(TREND_COUNTER_ENTITY)
+
+            if existing_counter:
+                _LOGGER.debug("Counter entity found: %s", existing_counter.entity_id)
+                self._counter_entity_id = existing_counter.entity_id
+                self._trend_counter = int(self.hass.states.get(self._counter_entity_id).state or 0)
+                break
+            else:
+                if attempt < 4:
+                    _LOGGER.warning("Counter entity not found. Retrying (%d/5)...", attempt + 1)
+                    await asyncio.sleep(1)
+                else:
+                    _LOGGER.error(
+                        "Expected counter entity 'TREND_COUNTER_ENTITY' not found in registry. "
+                        "Please check your configuration."
+                    )
+                    return
+
+        # Reflect the counter state and start the main loop
+        self._state = self._trend_counter
+        self.async_write_ha_state()
+        _LOGGER.debug("Trend counter reflected in state: %d", self._state)
+        self._start_task()  # Start the main loop
+
+    async def _initialize_buffers(self):
+        """Initialize trend calculation buffers for all entities."""
+        for entity in self._entities:
+            self._buffers[entity] = []
+        self._trend_counter = 0
+        self.hass.states.async_set(self._counter_entity_id, self._trend_counter)
+        _LOGGER.debug("Trend counter reset to 0 and initialized.")
 
     async def async_will_remove_from_hass(self):
-        """Stop trend processing when removed."""
+        """Handle cleanup when the manager is removed."""
         _LOGGER.debug("Stopping BetterTrends Manager task.")
-        self._stop_task()
+        await self._stop_task()
 
-    def _initialize_buffers(self):
-        """Initialize buffers for all configured entities."""
-        for entity in self._entities:
-            self._buffers[entity] = []  # Initialize as an empty list
-            _LOGGER.debug("Initialized buffer for %s: %s", entity, self._buffers[entity])
+    async def _stop_task(self):
+        """Stop the background task, if running."""
+        if self._task:
+            self._task.cancel()
+            self._running = False
+            try:
+                await self._task  # Wait for task to handle the cancellation
+            except asyncio.CancelledError:
+                pass  # Ignore the cancellation exception
 
-        # Reset the counter explicitly when buffers are initialized
-        self._counter = 0
-        self.hass.states.async_set(TREND_COUNTER_ENTITY, self._counter)
-        _LOGGER.debug("Trend counter reset to 0 during buffer initialization.")
+    async def _restart_task(self):
+        """Restart the background task."""
+        _LOGGER.debug("Restarting main_loop")
+
+        # Ensure buffers are reset
+        await self._initialize_buffers()
+
+        # Stop the current task
+        if self._task:
+            self._task.cancel()
+            try:
+                await self._task  # Properly await the cancellation
+            except asyncio.CancelledError:
+                _LOGGER.debug("Previous task cancelled successfully.")
+            self._task = None  # Clear the reference to the old task
+
+        # Start the new task
+        self._start_task()
 
     def _start_task(self):
         """Start the main processing loop."""
         if not self._running:
             self._running = True
-            self._task = asyncio.create_task(self._main_loop())
-
-    def _stop_task(self):
-        """Stop the main processing loop."""
-        if self._task:
-            self._running = False
-            self._task.cancel()
-
-    async def _load_settings(self):
-        """Load settings for interval and trend values."""
-        self._interval = self._get_ha_state(TREND_INTERVAL_ENTITY, default=DEFAULT_INTERVAL, cast_type=int)
-        self._trend_values = self._get_ha_state(TREND_VALUES_ENTITY, default=DEFAULT_INTERVAL, cast_type=int)
-        self._initialize_buffers()  # Reinitialize buffers with updated settings
+            if not self._task or self._task.done():
+                self._task = asyncio.create_task(self._main_loop())
+            else:
+                _LOGGER.warning("Attempted to start a new task, but an existing task is still running.")
 
     async def _main_loop(self):
-        """Main loop for processing trends."""
         while self._running:
             try:
                 # Reload settings dynamically before processing trends
                 await self._reload_settings()
 
                 _LOGGER.debug("Processing trends for all entities.")
-                await self._process_trends()
+                await self._process_trends()  # Await the trend processing
                 await asyncio.sleep(self._interval)
 
             except asyncio.CancelledError:
@@ -107,31 +152,6 @@ class BetterTrendsManager(SensorEntity):
                 break
             except Exception as e:
                 _LOGGER.error("Error in trend processing loop: %s", e)
-
-    async def _reload_settings(self):
-        """Reload settings dynamically."""
-        new_interval = self._get_ha_state(TREND_INTERVAL_ENTITY, default=DEFAULT_INTERVAL, cast_type=int)
-        new_trend_values = self._get_ha_state(TREND_VALUES_ENTITY, default=DEFAULT_TREND_VALUES, cast_type=int)
-
-        buffers_reset_required = False
-
-        # Update interval if it has changed
-        if new_interval != self._interval:
-            _LOGGER.info("Interval changed from %s to %s. Restarting main loop.", self._interval, new_interval)
-            self._interval = new_interval
-            buffers_reset_required = True
-
-        # Update trend values if they have changed
-        if new_trend_values != self._trend_values:
-            _LOGGER.info("Trend values changed from %s to %s. Reinitializing buffers.", self._trend_values,
-                         new_trend_values)
-            self._trend_values = new_trend_values
-            buffers_reset_required = True
-
-        # Only reset buffers and counter if required
-        if buffers_reset_required:
-            self._initialize_buffers()
-            _LOGGER.debug("Buffers reinitialized and counter reset after configuration change.")
 
     async def _process_trends(self):
         """Process trend calculations for all configured entities."""
@@ -154,11 +174,11 @@ class BetterTrendsManager(SensorEntity):
 
             _LOGGER.debug("Buffer for entity %s: %s", entity_id, buffer)
 
-            if self._counter >= self._trend_values:
+            if self._trend_counter >= self._trend_values:
+                # Ensure _calculate_trend is called correctly with entity_id
                 trend_value = self._calculate_trend(entity_id, buffer)
                 sensor_entity_id = f"sensor.bettertrends_{entity_id.replace('.', '_')}"
 
-                # Update state only if a valid trend value is calculated
                 if trend_value is not None:
                     self.hass.states.async_set(sensor_entity_id, trend_value)
                     _LOGGER.info("Updated trend for %s: %s", sensor_entity_id, trend_value)
@@ -168,35 +188,52 @@ class BetterTrendsManager(SensorEntity):
             else:
                 _LOGGER.debug("Buffer for %s is not yet full. Skipping trend update.", entity_id)
 
-        # Safely increment the trend counter
-        previous_counter = self._counter
-        self._counter = (self._counter + 1) % (self._trend_values + 1)  # Cycle from 0 to `steps`
+        # Increment trend counter
+        previous_counter = self._trend_counter
+        self._trend_counter = (self._trend_counter + 1) % (self._trend_values + 1)
 
-        # Update the TREND_COUNTER_ENTITY state only if it has changed
-        if self._counter != previous_counter:
-            self.hass.states.async_set(TREND_COUNTER_ENTITY, self._counter)
-            _LOGGER.debug("Trend counter updated from %d to %d", previous_counter, self._counter)
+        if self._trend_counter != previous_counter:
+            self.hass.states.async_set(TREND_COUNTER_ENTITY, self._trend_counter)
+            _LOGGER.debug("Trend counter updated from %d to %d", previous_counter, self._trend_counter)
         else:
-            _LOGGER.debug("Trend counter remains unchanged at %d", self._counter)
+            _LOGGER.debug("Trend counter remains unchanged at %d", self._trend_counter)
+
+    async def _reload_settings(self):
+        """Reload settings for interval, steps, and counter."""
+        interval_entity = self.hass.states.get(TREND_INTERVAL_ENTITY)
+        steps_entity = self.hass.states.get(TREND_VALUES_ENTITY)
+
+        new_interval = int(interval_entity.state) if interval_entity else DEFAULT_INTERVAL
+        new_trend_values = int(steps_entity.state) if steps_entity else DEFAULT_TREND_VALUES
+
+        if self._interval != new_interval or self._trend_values != new_trend_values:
+            self._interval = new_interval
+            self._trend_values = new_trend_values
+            await self._restart_task()
+
+        _LOGGER.debug(
+            "Settings reloaded: interval=%d, trend_values=%d, counter=%d",
+            self._interval,
+            self._trend_values,
+            self._trend_counter,
+        )
 
     def _calculate_trend(self, entity_id, buffer: list[float]) -> float:
         """Calculate the trend-adjusted value."""
         if not buffer:
-            # Retrieve last known state from BetterTrends sensor
             state = self.hass.states.get(f"sensor.bettertrends_{entity_id.replace('.', '_')}")
             if state:
                 return float(state.state)
             return None
 
         avg = sum(buffer) / len(buffer)
-        last = float(self.hass.states.get(entity_id).state)  # Ensure this matches the monitored entity format
+        last = float(self.hass.states.get(entity_id).state)  # Match monitored entity format
         trend_value = round(last - avg, 2)
 
-        # Normalize -0.0 to 0.0
         if trend_value == -0.0:
             trend_value = 0.0
 
-        _LOGGER.debug(f"Trend value for {entity_id}: {trend_value}")
+        _LOGGER.debug("Trend value for %s: %s", entity_id, trend_value)
         return trend_value
 
     def _get_ha_state(self, entity_id, default=None, cast_type=str):
@@ -207,16 +244,16 @@ class BetterTrendsManager(SensorEntity):
                 return cast_type(state.state)
             except (ValueError, TypeError):
                 _LOGGER.warning("Invalid state for %s: %s", entity_id, state.state)
-        else:
-            _LOGGER.debug("State for %s is unavailable. Using default: %s", entity_id, default)
         return default
 
-    def add_entity(self, entity_id: str):
-        """Dynamically add an entity to the manager."""
-        if entity_id not in self._entities:
-            self._entities.add(entity_id)
-            self._buffers[entity_id] = []
-            _LOGGER.info("Added entity %s to BetterTrends.", entity_id)
+    def add_entities(self, new_entities: list):
+        """Dynamically add new entities to the manager."""
+        for entity_id in new_entities:
+            if entity_id not in self._entities:
+                self._entities.add(entity_id)
+                if entity_id not in self._buffers:
+                    self._buffers[entity_id] = []
+                _LOGGER.info("Added entity %s to BetterTrends.", entity_id)
 
     def remove_entity(self, entity_id: str):
         """Dynamically remove an entity from the manager."""
@@ -249,15 +286,22 @@ class BetterTrendsSensor(SensorEntity):
         """Initialize a BetterTrends sensor."""
         self._manager = manager
         self._entity_id = entity_id
+        self._unique_id = f"sensor.bettertrends_{entity_id.replace('.', '_')}"
+        _LOGGER.debug("Initializing BetterTrends sensor: %s with unique_id: %s", self._entity_id, self._unique_id)
 
     async def async_added_to_hass(self):
         """Handle entity addition."""
-        _LOGGER.debug("Added BetterTrends sensor for %s.", self._entity_id)
+        _LOGGER.debug("BetterTrends sensor added for %s.", self._entity_id)
 
-        # Check if the state already exists; only initialize if necessary
+        # Check if the state already exists in HA
         existing_state = self.hass.states.get(self.unique_id)
-        if existing_state is None or existing_state.state in (None, "unknown"):
-            _LOGGER.debug("Initializing state for %s to 0.0.", self.unique_id)
+        if existing_state and existing_state.state != "unavailable":
+            _LOGGER.debug(
+                "State for %s already exists: %s. Reusing state.", self.unique_id, existing_state.state
+            )
+            self.hass.states.async_set(self.unique_id, existing_state.state)
+        else:
+            _LOGGER.debug("No valid existing state for %s. Initializing state to 0.0.", self.unique_id)
             self.hass.states.async_set(self.unique_id, 0.0)
 
     @property
@@ -267,10 +311,8 @@ class BetterTrendsSensor(SensorEntity):
 
     @property
     def unique_id(self):
-        """Return a unique ID for the sensor."""
-        _LOGGER.debug("Generating unique ID for %s as sensor.bettertrends_%s", self._entity_id,
-                      self._entity_id.replace('.', '_'))
-        return f"sensor.bettertrends_{self._entity_id.replace('.', '_')}"
+        """Return the cached unique ID."""
+        return self._unique_id
 
     @property
     def state(self):

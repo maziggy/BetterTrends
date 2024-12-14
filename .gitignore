@@ -2,3 +2,5 @@
 .DS_Store
 custom_components/.DS_Store
 custom_components/better_trends/.DS_Store
+custom_components/better_trends/.idea/
+custom_components/better_trends/__pycache__/

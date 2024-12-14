@@ -57,7 +57,7 @@ class TrendNumber(NumberEntity):
 
     @property
     def unique_id(self):
-        """Return the unique ID."""
+        """Return a truly unique ID for the number entity."""
         return self._attr_unique_id
 
     @property
