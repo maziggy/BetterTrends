@@ -102,3 +102,4 @@ theme:
   trendDownColor: "#498bff"
   trendEqualColor: "#4ff24b"
   trendUpColor: "#ff4c4c"
+```
