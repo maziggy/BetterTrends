@@ -1,3 +1,5 @@
+![image](https://raw.githubusercontent.com/home-assistant/brands/refs/heads/master/custom_integrations/better_trends/logo.png)
+
 # BetterTrends
 
 A custom Home Assistant integration, that calculates trend values for entities and displays result in a nice way.
