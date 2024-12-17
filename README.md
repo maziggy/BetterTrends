@@ -4,7 +4,7 @@
 
 A custom Home Assistant integration, that calculates trend values for entities and displays result in a nice way.
 
-Currently only three entities are supported, but will change in the near future.
+Currently only up to three entities are supported, but this will change in the near future.
 
 ## Screenshot 
 
