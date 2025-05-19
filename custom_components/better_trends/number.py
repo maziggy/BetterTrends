@@ -4,6 +4,8 @@ from homeassistant.core import HomeAssistant
 from .const import DOMAIN, DEFAULT_INTERVAL, DEFAULT_TREND_VALUES, TREND_INTERVAL_ENTITY, TREND_VALUES_ENTITY, \
     TREND_COUNTER_ENTITY
 import logging
+from homeassistant.helpers import entity_registry as er  # Ensure this import exists
+import traceback
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -11,40 +13,50 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
     """Set up BetterTrends numbers from a config entry."""
     try:
-        # Create numeric entities for interval, steps, and current step
-        interval_entity = TrendNumber(
-            "BetterTrends Interval",
-            TREND_INTERVAL_ENTITY,
-            DEFAULT_INTERVAL,
-            5,
-            9999,
-        )
-        steps_entity = TrendNumber(
-            "BetterTrends Steps",
-            TREND_VALUES_ENTITY,
-            DEFAULT_TREND_VALUES,
-            1,
-            1000,
-        )
-        current_step_entity = TrendNumber(
-            "BetterTrends Current Step",
-            TREND_COUNTER_ENTITY,
-            0,  # Initial value should be 0 for the current step
-            0,
-            1000,
-        )
+        registry = er.async_get(hass)
 
-        async_add_entities([interval_entity, steps_entity, current_step_entity], update_before_add=True)
+        # Add interval entity if not found
+        if not registry.async_get(TREND_INTERVAL_ENTITY):
+            interval_entity = TrendNumber(
+                "BetterTrends Interval",
+                TREND_INTERVAL_ENTITY,
+                DEFAULT_INTERVAL,
+                5,
+                9999,
+            )
+            async_add_entities([interval_entity])
+
+        # Add steps entity if not found
+        if not registry.async_get(TREND_VALUES_ENTITY):
+            steps_entity = TrendNumber(
+                "BetterTrends Steps",
+                TREND_VALUES_ENTITY,
+                DEFAULT_TREND_VALUES,
+                1,
+                1000,
+            )
+            async_add_entities([steps_entity])
+
+        # Add counter entity if not found
+        if not registry.async_get(TREND_COUNTER_ENTITY):
+            current_step_entity = TrendNumber(
+                "BetterTrends Current Step",
+                TREND_COUNTER_ENTITY,
+                0,
+                0,
+                1000,
+            )
+            async_add_entities([current_step_entity])
     except Exception as e:
-        _LOGGER.error(f"Error setting up entities: {e}")
+        _LOGGER.error(f"Error setting up entities: {traceback.format_exc()}")
 
 
 class TrendNumber(NumberEntity):
     """A numeric entity representing a configurable value."""
 
-    def __init__(self, name, unique_id, initial_value, min_value, max_value):
+    def __init__(self, name, unique_id, initial_value, min_value, max_value, suffix=""):
         self._attr_name = name
-        self._attr_unique_id = unique_id
+        self._attr_unique_id = f"{unique_id}{suffix}"  # Use suffix for unique ID generation
         self._attr_native_value = initial_value
         self._attr_min_value = min_value
         self._attr_max_value = max_value
@@ -53,6 +65,12 @@ class TrendNumber(NumberEntity):
 
     async def async_added_to_hass(self):
         """Set initial state when added to hass."""
+        _LOGGER.info(f"{self._attr_name} added to Home Assistant with initial value: {self._attr_native_value}")
+        _LOGGER.debug(
+            f"Re-initializing {self._attr_name}: "
+            f"unique_id={self._attr_unique_id}, min_value={self._attr_min_value}, max_value={self._attr_max_value}, "
+            f"current_value={self._attr_native_value}"
+        )
         self.async_write_ha_state()
 
     @property
@@ -74,6 +92,7 @@ class TrendNumber(NumberEntity):
             )
             return
 
+        _LOGGER.debug(f"Setting {self._attr_name} from {self._attr_native_value} to {value}")
         self._attr_native_value = int(value)
         self.async_write_ha_state()
         _LOGGER.info(f"{self._attr_name} updated to {self._attr_native_value}")

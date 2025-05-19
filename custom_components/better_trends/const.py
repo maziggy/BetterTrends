@@ -1,6 +1,6 @@
 DOMAIN = "better_trends"
 CONF_ENTITIES = "entities"
-DEFAULT_INTERVAL = 12
+DEFAULT_INTERVAL = 5
 DEFAULT_TREND_VALUES = 10
 TREND_INTERVAL_ENTITY = "number.bettertrends_interval"
 TREND_VALUES_ENTITY = "number.bettertrends_steps"
